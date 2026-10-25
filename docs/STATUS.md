@@ -34,3 +34,15 @@
 - Partial: none within Session 3.
 - Known broken: none found within Session 3.
 - Deferred by roadmap: completeness, PDF reports and dashboard are Session 4; the report-download end-to-end flow and hardening are Session 5.
+
+## Session 4
+
+- Done: pure completeness rules and warning-only vague-phrase detection, with per-rule fixtures and 69/70/89/90 boundary tests. The same evaluator powers the live create/edit preview, persisted create/edit scores, seed scores and a one-time migration backfill of existing reports.
+- Done: completeness badge and exact fix suggestions on project bug lists and details, plus an “Incomplete only” filter.
+- Done: member-authorized PDFKit download on every bug with all Section 5.7 sections, grouped notes, state durations, page footers, long-text wrapping and a bundled Unicode font.
+- Done: project and date-filtered dashboard with severity, status and 30/90-day area charts, recurring-area flags, average fix/verify times and links into the filtered project bug list.
+- Done: composite SQLite indexes for project, date and filtered list queries. Stats are checked against raw seeded counts; PDF permission and smoke tests cover the report endpoint.
+- Checks: clean `npm ci`, fresh migration and seed, lint, type-check, 101 unit/integration tests, format check, production build and two existing Playwright browser tests passed locally. SQLite query plans use the new composite indexes.
+- Partial: none within Session 4.
+- Known broken: none found within Session 4.
+- Deferred by roadmap: the full lifecycle to report-download end-to-end flow and hardening are Session 5.
