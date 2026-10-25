@@ -18,12 +18,21 @@ export async function projectActor(projectId: string) {
   return requireMember(membership?.role, userId);
 }
 
-export async function parseJson<T>(request: Request, schema: ZodType<T>): Promise<T> {
+export async function parseJson<T>(
+  request: Request,
+  schema: ZodType<T>,
+): Promise<T> {
   return schema.parse(await request.json());
 }
 
 export function responseError(error: unknown) {
   if (error instanceof ZodError || error instanceof SyntaxError)
-    return Response.json({ error: "Invalid input", details: error instanceof ZodError ? error.issues : undefined }, { status: 400 });
+    return Response.json(
+      {
+        error: "Invalid input",
+        details: error instanceof ZodError ? error.issues : undefined,
+      },
+      { status: 400 },
+    );
   return errorResponse(error);
 }

@@ -1,6 +1,11 @@
 import { AppError } from "./errors";
 
-export const statuses = ["Submitted", "Investigating", "Fixed", "Verified"] as const;
+export const statuses = [
+  "Submitted",
+  "Investigating",
+  "Fixed",
+  "Verified",
+] as const;
 export type Status = (typeof statuses)[number];
 export type Role = "Tester" | "Developer" | "Admin";
 
@@ -40,10 +45,20 @@ export function decideTransition(input: TransitionInput): { reopen: boolean } {
       !input.rootCauseCategory ||
       !input.reproducedByDev
     )
-      throw new AppError("Fix requires resolution, root cause and reproduced-by-developer", 400);
+      throw new AppError(
+        "Fix requires resolution, root cause and reproduced-by-developer",
+        400,
+      );
   }
-  if (to === "Verified" && role !== "Admin" && input.fixedById === input.actorId)
-    throw new AppError("The developer who fixed this bug cannot verify it", 403);
+  if (
+    to === "Verified" &&
+    role !== "Admin" &&
+    input.fixedById === input.actorId
+  )
+    throw new AppError(
+      "The developer who fixed this bug cannot verify it",
+      403,
+    );
   const reopen = to === "Investigating" && from !== "Submitted";
   if (reopen && !input.reason?.trim())
     throw new AppError("Reopen or regression requires a reason", 400);

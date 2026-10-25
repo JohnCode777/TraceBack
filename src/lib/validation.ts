@@ -1,14 +1,30 @@
 import { z } from "zod";
 
 export const severity = z.enum(["Critical", "High", "Medium", "Low"]);
-export const reproducibility = z.enum(["Always", "Sometimes", "Rarely", "Once"]);
+export const reproducibility = z.enum([
+  "Always",
+  "Sometimes",
+  "Rarely",
+  "Once",
+]);
 export const envType = z.enum(["Production", "Staging", "Development"]);
 export const rootCause = z.enum([
-  "Logic error", "Configuration", "Data", "Race condition", "Third party", "Environment", "Unknown",
+  "Logic error",
+  "Configuration",
+  "Data",
+  "Race condition",
+  "Third party",
+  "Environment",
+  "Unknown",
 ]);
 export const reproducedByDev = z.enum(["Yes", "Partially", "No"]);
 export const noteType = z.enum([
-  "Observation", "Hypothesis", "Ruled out", "Root cause", "Workaround", "Question",
+  "Observation",
+  "Hypothesis",
+  "Ruled out",
+  "Root cause",
+  "Workaround",
+  "Question",
 ]);
 const optionalText = z.string().trim().max(10000).nullable().optional();
 export const bugFields = z.object({
@@ -47,13 +63,23 @@ export const noteSchema = z.object({
   body: z.string().trim().min(1).max(10000),
 });
 export const assignSchema = z.object({ assigneeId: z.string().nullable() });
+export const projectParams = z.object({ projectId: z.string().min(1) });
+export const bugParams = projectParams.extend({ bugId: z.string().min(1) });
+export const noteParams = bugParams.extend({ noteId: z.string().min(1) });
+const blankAsMissing = <T extends z.ZodType>(schema: T) =>
+  z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    schema.optional(),
+  );
 export const listSchema = z.object({
-  status: z.enum(["Submitted", "Investigating", "Fixed", "Verified"]).optional(),
-  severity: severity.optional(),
-  area: z.string().optional(),
-  reporter: z.string().optional(),
-  assignee: z.string().optional(),
-  q: z.string().max(200).optional(),
+  status: blankAsMissing(
+    z.enum(["Submitted", "Investigating", "Fixed", "Verified"]),
+  ),
+  severity: blankAsMissing(severity),
+  area: blankAsMissing(z.string()),
+  reporter: blankAsMissing(z.string()),
+  assignee: blankAsMissing(z.string()),
+  q: blankAsMissing(z.string().max(200)),
   sort: z.enum(["newest", "oldest", "severity", "title"]).default("newest"),
   page: z.coerce.number().int().min(1).default(1),
 });
