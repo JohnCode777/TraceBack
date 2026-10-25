@@ -23,3 +23,14 @@
 - Partial: none within Session 2.
 - Known broken: none within Session 2.
 - Deferred by roadmap: bug workflow and all later product features remain for Sessions 3–5. CI results are pending the pull request.
+
+## Session 3
+
+- Done: create and edit forms with shared Zod validation and add/remove reproduction steps; race-safe per-project `KEY-number` IDs.
+- Done: scoped bug list with status, severity, area, reporter, assignee and text filters, sorting and pagination; bug detail with assignment and structured resolution.
+- Done: pure server-enforced state machine, immutable status records, reopen and regression counts, timeline, typed notes with sanitised Markdown and edited markers, and a combined activity feed with before/after edit logs.
+- Done: integrated the Session 2 Auth.js flow, policy and project shell that reached `main` after this workspace started; bug pages now live under the project shell.
+- Checks: clean `npm ci`, migration, seed, lint, type-check, 72 unit/integration tests, format check, build and two Playwright browser tests passed locally. Tests cover all 16 status pairs, including invalid pairs, endpoint permissions and nonmember 404s, concurrent numbering, sanitisation and history immutability.
+- Partial: none within Session 3.
+- Known broken: none found within Session 3.
+- Deferred by roadmap: completeness, PDF reports and dashboard are Session 4; the report-download end-to-end flow and hardening are Session 5.

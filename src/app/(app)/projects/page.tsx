@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { listProjects } from "@/lib/projects";
 export default async function ProjectsPage() {
   const session = await auth();
-  const projects = await listProjects(session!.user!.id!);
+  if (!session?.user?.id) redirect("/login");
+  const projects = await listProjects(session.user.id);
   return (
     <>
       <div className="flex items-center justify-between">

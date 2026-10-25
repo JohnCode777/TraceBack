@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getProject, ProjectError } from "@/lib/projects";
 import { can } from "@/lib/policy";
@@ -11,16 +11,16 @@ export default async function ProjectPage({
 }) {
   const { id } = await params;
   const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const userId = session.user.id;
   let project;
   try {
-    project = await getProject(session!.user!.id!, id);
+    project = await getProject(userId, id);
   } catch (error) {
     if (error instanceof ProjectError && error.status === 404) notFound();
     throw error;
   }
-  const role = project.members.find(
-    (member) => member.userId === session!.user!.id,
-  )?.role;
+  const role = project.members.find((member) => member.userId === userId)?.role;
   return (
     <>
       <div className="flex items-center justify-between">
@@ -42,6 +42,9 @@ export default async function ProjectPage({
         </p>
       )}
       <p>{project.description || "No description yet."}</p>
+      <Link className="button-secondary" href={`/projects/${id}/bugs`}>
+        View bugs
+      </Link>
       <section className="card">
         <h2 className="text-lg font-semibold">Members</h2>
         <ul className="mt-3 space-y-2">

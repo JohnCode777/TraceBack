@@ -22,3 +22,8 @@
 4. **Auth sessions.** Auth.js uses JWT sessions with its credentials provider; bcryptjs hashes passwords. This fits the existing User table without an adapter schema change.
 5. **Migration continuity.** Session 2 adds only the `LoginThrottle` table through an incremental SQL migration in the Session 1 checksum-tracked runner. The existing 50-bug seed and PDF spike remain intact.
 6. **404 response behavior.** The new-project route owns the loading boundary. A parent boundary caused non-member project detail pages to stream a 200 response before rendering not-found content; the scoped boundary allows a true HTTP 404.
+
+## Session 3
+
+1. **Edit audit.** The existing schema has no edit-history model. Bug edits and assignments append a reserved, uneditable Observation note showing previous and new values. The activity feed shows these entries alongside notes and status changes. This avoids a schema change outside the specified data model while preserving a durable trail for non-trivial edits.
+2. **Bug creation.** The database atomically increments `nextBugNumber` in the same transaction as bug insertion. A bounded retry handles transient SQLite write contention.

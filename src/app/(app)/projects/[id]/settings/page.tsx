@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import {
   addMemberAction,
@@ -20,16 +20,16 @@ export default async function SettingsPage({
   const { id } = await params;
   const messages = await searchParams;
   const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const userId = session.user.id;
   let project;
   try {
-    project = await getProject(session!.user!.id!, id);
+    project = await getProject(userId, id);
   } catch (error) {
     if (error instanceof ProjectError && error.status === 404) notFound();
     throw error;
   }
-  const role = project.members.find(
-    (member) => member.userId === session!.user!.id,
-  )?.role;
+  const role = project.members.find((member) => member.userId === userId)?.role;
   if (!role || !can(roleSchema.parse(role), "manageProject"))
     return (
       <div role="alert" className="card">

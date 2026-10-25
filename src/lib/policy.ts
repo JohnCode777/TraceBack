@@ -1,4 +1,5 @@
-import type { Role } from "./validators";
+import { roleSchema, type Role } from "./validators";
+import { AppError } from "./errors";
 
 export type Action =
   | "viewProject"
@@ -58,4 +59,76 @@ export function can(
   if (action === "verify" && role !== "Admin" && context.isFixAuthor)
     return false;
   return true;
+}
+
+export type Actor = { id: string; role: Role };
+export type BugForPolicy = { reporterId: string; status: string };
+export type BugAction =
+  | "view"
+  | "create"
+  | "edit"
+  | "assign"
+  | "note"
+  | "transition";
+
+export function requireMember(
+  role: string | null | undefined,
+  userId: string,
+): Actor {
+  const parsed = roleSchema.safeParse(role);
+  if (!parsed.success) throw new AppError("Not found", 404);
+  return { id: userId, role: parsed.data };
+}
+
+export function authorizeBug(
+  actor: Actor,
+  action: BugAction,
+  bug?: BugForPolicy,
+  fields: readonly string[] = [],
+): void {
+  if (action === "view" && can(actor.role, "viewProject")) return;
+  if (action === "create" && can(actor.role, "createBug")) return;
+  if (action === "note" && can(actor.role, "addNote")) return;
+  if (action === "assign" && can(actor.role, "assignDeveloper")) return;
+  if (action === "transition") return; // Pure state machine checks transition roles.
+  if (action === "edit") {
+    const reporterFields = [
+      "title",
+      "severity",
+      "reproducibility",
+      "areaId",
+      "osName",
+      "osVersion",
+      "browserOrDevice",
+      "appVersion",
+      "envType",
+      "expectedBehaviour",
+      "actualBehaviour",
+      "extraContext",
+      "steps",
+    ];
+    const resolutionFields = [
+      "resolutionSummary",
+      "rootCauseCategory",
+      "reproducedByDev",
+      "fixReference",
+    ];
+    if (
+      can(actor.role, "editOwnBug", {
+        isReporter: bug?.reporterId === actor.id,
+        status: bug?.status,
+      }) &&
+      !fields.some((field) => resolutionFields.includes(field))
+    )
+      return;
+    if (
+      can(actor.role, "editAnyBug", {
+        isNonReporterField: !fields.some((field) =>
+          reporterFields.includes(field),
+        ),
+      })
+    )
+      return;
+  }
+  throw new AppError("Forbidden", 403);
 }
