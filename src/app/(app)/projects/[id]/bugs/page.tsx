@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { listBugs } from "@/lib/bugs";
 import { projectActor } from "@/lib/request";
 import { listSchema } from "@/lib/validation";
+import { evaluate } from "@/lib/completeness";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -58,6 +59,12 @@ export default async function BugListPage({ params, searchParams }: Props) {
         </Link>
       </div>
       <form className="mt-6 grid gap-2 md:grid-cols-4">
+        {raw.unresolved === "1" && (
+          <input type="hidden" name="unresolved" value="1" />
+        )}
+        {(raw.window === "30" || raw.window === "90") && (
+          <input type="hidden" name="window" value={raw.window} />
+        )}
         <label>
           Search
           <input
@@ -152,6 +159,33 @@ export default async function BugListPage({ params, searchParams }: Props) {
             <option value="title">Title</option>
           </select>
         </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            name="incomplete"
+            value="1"
+            defaultChecked={raw.incomplete === "1"}
+          />
+          Incomplete only
+        </label>
+        <label>
+          From
+          <input
+            className="block w-full border p-2"
+            type="date"
+            name="from"
+            defaultValue={raw.from ?? ""}
+          />
+        </label>
+        <label>
+          To
+          <input
+            className="block w-full border p-2"
+            type="date"
+            name="to"
+            defaultValue={raw.to ?? ""}
+          />
+        </label>
         <button className="self-end rounded bg-slate-900 p-2 text-white">
           Apply filters
         </button>
@@ -174,6 +208,27 @@ export default async function BugListPage({ params, searchParams }: Props) {
                 {bug.area?.name ?? "No area"} ·{" "}
                 {bug.assignee?.name ?? "Unassigned"}
               </p>
+              <p
+                className={
+                  bug.completenessLevel === "Incomplete"
+                    ? "font-semibold text-amber-800"
+                    : ""
+                }
+              >
+                {bug.completenessLevel} · {bug.completenessScore}/100
+              </p>
+              {evaluate(bug).missing.length > 0 && (
+                <details>
+                  <summary>Completeness reasons</summary>
+                  <ul className="list-disc pl-6">
+                    {evaluate(bug).missing.map((gap) => (
+                      <li key={gap.rule}>
+                        {gap.rule}: {gap.suggestion}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
             </li>
           ))}
         </ul>

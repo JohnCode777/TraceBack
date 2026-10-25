@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import type { z } from "zod";
 import { db } from "./db";
+import { evaluate } from "./completeness";
 import { AppError } from "./errors";
 import { authorizeBug, type Actor } from "./policy";
 import { decideTransition, type Status } from "./state-machine";
@@ -56,9 +57,12 @@ export async function createBug(
           select: { nextBugNumber: true, key: true },
         });
         const { steps, ...fields } = input;
+        const completeness = evaluate({ ...fields, steps });
         const bug = await tx.bug.create({
           data: {
             ...fields,
+            completenessScore: completeness.score,
+            completenessLevel: completeness.level,
             projectId,
             reporterId: actor.id,
             number: project.nextBugNumber - 1,
@@ -125,11 +129,29 @@ export async function listBugs(
   authorizeBug(actor, "view");
   const where: Prisma.BugWhereInput = {
     projectId,
-    status: query.status,
+    status:
+      query.status ??
+      (query.unresolved
+        ? { in: ["Submitted", "Investigating", "Fixed"] }
+        : undefined),
     severity: query.severity,
     areaId: query.area,
     reporterId: query.reporter,
     assigneeId: query.assignee,
+    completenessLevel: query.incomplete ? "Incomplete" : undefined,
+    createdAt: {
+      gte: query.window
+        ? new Date(
+            Math.max(
+              query.from ? new Date(`${query.from}T00:00:00Z`).getTime() : 0,
+              Date.now() - Number(query.window) * 86_400_000,
+            ),
+          )
+        : query.from
+          ? new Date(`${query.from}T00:00:00Z`)
+          : undefined,
+      lte: query.to ? new Date(`${query.to}T23:59:59.999Z`) : undefined,
+    },
     OR: query.q
       ? [
           { title: { contains: query.q } },
@@ -149,7 +171,11 @@ export async function listBugs(
   const [items, total] = await Promise.all([
     client.bug.findMany({
       where,
-      include: { area: true, assignee: { select: { name: true } } },
+      include: {
+        area: true,
+        assignee: { select: { name: true } },
+        steps: { orderBy: { position: "asc" } },
+      },
       orderBy: [orderBy, { id: "asc" }],
       skip: (query.page - 1) * 20,
       take: 20,
@@ -181,6 +207,11 @@ export async function editBug(
   await checkArea(client, projectId, input.areaId);
   if ("assigneeId" in input) throw new AppError("Use assignment action", 400);
   const { steps, ...fields } = input;
+  const completeness = evaluate({
+    ...original,
+    ...fields,
+    steps: steps ?? original.steps,
+  });
   const changed = Object.entries(fields)
     .filter(
       ([key, value]) =>
@@ -213,7 +244,14 @@ export async function editBug(
         })),
       });
     }
-    const bug = await tx.bug.update({ where: { id: bugId }, data: fields });
+    const bug = await tx.bug.update({
+      where: { id: bugId },
+      data: {
+        ...fields,
+        completenessScore: completeness.score,
+        completenessLevel: completeness.level,
+      },
+    });
     await tx.note.create({
       data: {
         bugId,

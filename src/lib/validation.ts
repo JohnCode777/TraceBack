@@ -80,6 +80,11 @@ export const listSchema = z.object({
   reporter: blankAsMissing(z.string()),
   assignee: blankAsMissing(z.string()),
   q: blankAsMissing(z.string().max(200)),
+  incomplete: blankAsMissing(z.enum(["1"])),
+  unresolved: blankAsMissing(z.enum(["1"])),
+  window: blankAsMissing(z.enum(["30", "90"])),
+  from: blankAsMissing(z.iso.date()),
+  to: blankAsMissing(z.iso.date()),
   sort: z.enum(["newest", "oldest", "severity", "title"]).default("newest"),
   page: z.coerce.number().int().min(1).default(1),
 });

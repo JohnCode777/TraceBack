@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createBugSchema } from "@/lib/validation";
+import { evaluate } from "@/lib/completeness";
 
 type Area = { id: string; name: string };
 type Initial = {
@@ -31,11 +32,38 @@ export function BugForm({
   initial?: Initial;
 }) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [steps, setSteps] = useState(
     initial?.steps.map((s) => s.instruction) ?? [""],
   );
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState(() =>
+    evaluate({ ...initial, steps: initial?.steps ?? [""] }),
+  );
+  const updatePreview = (form: HTMLFormElement, currentSteps: string[]) => {
+    const data = new FormData(form);
+    const value = (name: string) => String(data.get(name) ?? "").trim() || null;
+    setPreview(
+      evaluate({
+        title: value("title"),
+        severity: value("severity"),
+        areaId: value("areaId"),
+        osName: value("osName"),
+        browserOrDevice: value("browserOrDevice"),
+        appVersion: value("appVersion"),
+        expectedBehaviour: value("expectedBehaviour"),
+        actualBehaviour: value("actualBehaviour"),
+        reproducibility: value("reproducibility"),
+        extraContext: value("extraContext"),
+        steps: currentSteps,
+      }),
+    );
+  };
+  const changeSteps = (next: string[]) => {
+    setSteps(next);
+    if (formRef.current) updatePreview(formRef.current, next);
+  };
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -104,7 +132,13 @@ export function BugForm({
     </label>
   );
   return (
-    <form onSubmit={submit} className="mt-6 grid gap-4">
+    <form
+      ref={formRef}
+      onSubmit={submit}
+      onInput={(event) => updatePreview(event.currentTarget, steps)}
+      onChange={(event) => updatePreview(event.currentTarget, steps)}
+      className="mt-6 grid gap-4"
+    >
       {field("title", "Title")}
       <div className="grid gap-4 md:grid-cols-3">
         <label>
@@ -178,7 +212,7 @@ export function BugForm({
                 className="mt-1 block w-full border p-2"
                 value={step}
                 onChange={(e) =>
-                  setSteps(
+                  changeSteps(
                     steps.map((s, i) => (i === index ? e.target.value : s)),
                   )
                 }
@@ -187,7 +221,7 @@ export function BugForm({
             <button
               type="button"
               className="self-end border p-2"
-              onClick={() => setSteps(steps.filter((_, i) => i !== index))}
+              onClick={() => changeSteps(steps.filter((_, i) => i !== index))}
             >
               Remove
             </button>
@@ -196,7 +230,7 @@ export function BugForm({
         <button
           type="button"
           className="w-fit underline"
-          onClick={() => setSteps([...steps, ""])}
+          onClick={() => changeSteps([...steps, ""])}
         >
           Add step
         </button>
@@ -204,6 +238,26 @@ export function BugForm({
       {field("expectedBehaviour", "Expected behaviour", true)}
       {field("actualBehaviour", "Actual behaviour", true)}
       {field("extraContext", "Extra context", true)}
+      <section className="rounded border p-4" aria-live="polite">
+        <h2 className="font-semibold">
+          Completeness preview: {preview.level} ({preview.score}/100)
+        </h2>
+        <p>Incomplete reports can still be saved.</p>
+        {preview.missing.length > 0 && (
+          <ul className="list-disc pl-6">
+            {preview.missing.map((gap) => (
+              <li key={gap.rule}>
+                {gap.rule}: {gap.suggestion}
+              </li>
+            ))}
+          </ul>
+        )}
+        {preview.warnings.map((warning) => (
+          <p key={warning} className="text-amber-800">
+            {warning}
+          </p>
+        ))}
+      </section>
       {error && (
         <p role="alert" className="text-red-700">
           {error}

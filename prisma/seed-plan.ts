@@ -1,3 +1,5 @@
+import { evaluate } from "../src/lib/completeness";
+
 export const seedProjects = [
   {
     id: "seed-project-traceback",
@@ -186,14 +188,8 @@ export function buildSeedBugs(now = new Date()): SeedBug[] {
           ? "Unexpected result"
           : `${title} when using the demo account.`,
         extraContext: `Fake demo evidence: https://example.test/${project.key.toLowerCase()}/${number}`,
-        // The completeness engine arrives in Session 4. Seed scores are examples,
-        // deliberately varied, and are recomputed by that session's migration.
-        completenessScore: isSparse ? 65 : number % 5 === 0 ? 85 : 95,
-        completenessLevel: isSparse
-          ? "Incomplete"
-          : number % 5 === 0
-            ? "Acceptable"
-            : "Strong",
+        completenessScore: 0,
+        completenessLevel: "Incomplete",
         reopenCount,
         reproducedByDev: fixedAt
           ? number % 4 === 0
@@ -262,5 +258,12 @@ export function buildSeedBugs(now = new Date()): SeedBug[] {
       });
     }
   }
-  return bugs;
+  return bugs.map((bug) => {
+    const result = evaluate(bug);
+    return {
+      ...bug,
+      completenessScore: result.score,
+      completenessLevel: result.level,
+    };
+  });
 }

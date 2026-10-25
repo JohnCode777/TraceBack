@@ -17,6 +17,7 @@ import {
 } from "../src/lib/bugs";
 import { authorizeBug, requireMember, type Actor } from "../src/lib/policy";
 import { listSchema } from "../src/lib/validation";
+import { evaluate } from "../src/lib/completeness";
 
 const tester: Actor = { id: "tester", role: "Tester" };
 const otherTester: Actor = { id: "other", role: "Tester" };
@@ -76,6 +77,57 @@ afterEach(async () => {
 });
 
 describe("bug workflow integration", () => {
+  it("recomputes completeness on create and edit, and filters incomplete bugs", async () => {
+    const sparse = { ...input, steps: ["Open page"] };
+    const bug = await createBug("project", tester, sparse, client);
+    const initial = evaluate(sparse);
+    expect([bug.completenessScore, bug.completenessLevel]).toEqual([
+      initial.score,
+      initial.level,
+    ]);
+    expect(
+      (
+        await listBugs(
+          "project",
+          tester,
+          listSchema.parse({ incomplete: "1" }),
+          client,
+        )
+      ).total,
+    ).toBe(1);
+    const edited = await editBug(
+      "project",
+      bug.id,
+      tester,
+      {
+        steps: input.steps,
+        browserOrDevice: "Firefox",
+        appVersion: "1.0",
+        extraContext: "Error log attached",
+      },
+      client,
+    );
+    const updated = evaluate({
+      ...input,
+      browserOrDevice: "Firefox",
+      appVersion: "1.0",
+      extraContext: "Error log attached",
+    });
+    expect([edited.completenessScore, edited.completenessLevel]).toEqual([
+      updated.score,
+      updated.level,
+    ]);
+    expect(
+      (
+        await listBugs(
+          "project",
+          tester,
+          listSchema.parse({ incomplete: "1" }),
+          client,
+        )
+      ).total,
+    ).toBe(0);
+  });
   it("allocates unique sequential IDs under concurrent creation", async () => {
     const bugs = await Promise.all(
       Array.from({ length: 12 }, () =>
