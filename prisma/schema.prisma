@@ -138,3 +138,9 @@ model StatusChange {
 
   @@index([bugId, createdAt])
 }
+
+model LoginThrottle {
+  email String @id
+  attempts Int @default(0)
+  windowStartedAt DateTime
+}
