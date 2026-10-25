@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@prisma/client";
 
 let activeUser: string | null = "tester";
-vi.mock("../src/lib/auth", () => ({
+vi.mock("../src/auth", () => ({
   auth: async () => (activeUser ? { user: { id: activeUser } } : null),
 }));
 

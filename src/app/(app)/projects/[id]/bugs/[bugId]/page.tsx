@@ -8,9 +8,9 @@ import { projectActor } from "@/lib/request";
 import { BugActions, NoteEditor } from "@/components/bug-actions";
 import { BugForm } from "@/components/bug-form";
 
-type Props = { params: Promise<{ projectId: string; bugId: string }> };
+type Props = { params: Promise<{ id: string; bugId: string }> };
 export default async function BugDetailPage({ params }: Props) {
-  const { projectId, bugId } = await params;
+  const { id: projectId, bugId } = await params;
   let actor;
   try {
     actor = await projectActor(projectId);

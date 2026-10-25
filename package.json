@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "start": "next start",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "DATABASE_URL=file:./session2-test.db node --import tsx scripts/migrate.ts && DATABASE_URL=file:./session2-test.db vitest run",
     "e2e": "playwright test",
     "build": "next build",
     "migrate": "node --import tsx scripts/migrate.ts",

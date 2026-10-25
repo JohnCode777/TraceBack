@@ -10,7 +10,7 @@ async function login(page: Page, email: string) {
   ).toBeVisible();
   await expect(
     page.getByText(
-      `Signed in as Demo ${email.startsWith("tester") ? "Tester" : "Developer"} 1`,
+      `Demo ${email.startsWith("tester") ? "Tester" : "Developer"} 1`,
     ),
   ).toBeVisible();
 }

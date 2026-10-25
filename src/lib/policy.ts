@@ -1,5 +1,65 @@
+import { roleSchema, type Role } from "./validators";
 import { AppError } from "./errors";
-import type { Role } from "./state-machine";
+
+export type Action =
+  | "viewProject"
+  | "createBug"
+  | "editOwnBug"
+  | "editAnyBug"
+  | "assignDeveloper"
+  | "addNote"
+  | "investigate"
+  | "fix"
+  | "verify"
+  | "reopen"
+  | "regression"
+  | "manageProject"
+  | "manageMembers"
+  | "viewDashboard"
+  | "downloadReport";
+
+const permissions: Record<Action, readonly Role[]> = {
+  viewProject: ["Tester", "Developer", "Admin"],
+  createBug: ["Tester", "Developer", "Admin"],
+  editOwnBug: ["Tester", "Admin"],
+  editAnyBug: ["Developer", "Admin"],
+  assignDeveloper: ["Developer", "Admin"],
+  addNote: ["Tester", "Developer", "Admin"],
+  investigate: ["Developer", "Admin"],
+  fix: ["Developer", "Admin"],
+  verify: ["Tester", "Admin"],
+  reopen: ["Tester", "Admin"],
+  regression: ["Tester", "Admin"],
+  manageProject: ["Admin"],
+  manageMembers: ["Admin"],
+  viewDashboard: ["Tester", "Developer", "Admin"],
+  downloadReport: ["Tester", "Developer", "Admin"],
+};
+
+export type PolicyContext = {
+  isReporter?: boolean;
+  status?: string;
+  isNonReporterField?: boolean;
+  isFixAuthor?: boolean;
+};
+
+export function can(
+  role: Role,
+  action: Action,
+  context: PolicyContext = {},
+): boolean {
+  if (!permissions[action].includes(role)) return false;
+  if (action === "editOwnBug" && role === "Tester")
+    return (
+      context.isReporter === true &&
+      (context.status === "Submitted" || context.status === "Investigating")
+    );
+  if (action === "editAnyBug" && role === "Developer")
+    return context.isNonReporterField === true;
+  if (action === "verify" && role !== "Admin" && context.isFixAuthor)
+    return false;
+  return true;
+}
 
 export type Actor = { id: string; role: Role };
 export type BugForPolicy = { reporterId: string; status: string };
@@ -15,9 +75,9 @@ export function requireMember(
   role: string | null | undefined,
   userId: string,
 ): Actor {
-  if (!role || !["Tester", "Developer", "Admin"].includes(role))
-    throw new AppError("Not found", 404);
-  return { id: userId, role: role as Role };
+  const parsed = roleSchema.safeParse(role);
+  if (!parsed.success) throw new AppError("Not found", 404);
+  return { id: userId, role: parsed.data };
 }
 
 export function authorizeBug(
@@ -26,47 +86,49 @@ export function authorizeBug(
   bug?: BugForPolicy,
   fields: readonly string[] = [],
 ): void {
-  if (action === "view" || action === "create" || action === "note") return;
-  if (action === "assign") {
-    if (actor.role === "Tester") throw new AppError("Forbidden", 403);
-    return;
-  }
-  if (action === "transition") return; // state machine checks transition roles
-  if (actor.role === "Admin") return;
-  if (actor.role === "Tester") {
+  if (action === "view" && can(actor.role, "viewProject")) return;
+  if (action === "create" && can(actor.role, "createBug")) return;
+  if (action === "note" && can(actor.role, "addNote")) return;
+  if (action === "assign" && can(actor.role, "assignDeveloper")) return;
+  if (action === "transition") return; // Pure state machine checks transition roles.
+  if (action === "edit") {
+    const reporterFields = [
+      "title",
+      "severity",
+      "reproducibility",
+      "areaId",
+      "osName",
+      "osVersion",
+      "browserOrDevice",
+      "appVersion",
+      "envType",
+      "expectedBehaviour",
+      "actualBehaviour",
+      "extraContext",
+      "steps",
+    ];
+    const resolutionFields = [
+      "resolutionSummary",
+      "rootCauseCategory",
+      "reproducedByDev",
+      "fixReference",
+    ];
     if (
-      bug?.reporterId !== actor.id ||
-      ["Fixed", "Verified"].includes(bug.status)
+      can(actor.role, "editOwnBug", {
+        isReporter: bug?.reporterId === actor.id,
+        status: bug?.status,
+      }) &&
+      !fields.some((field) => resolutionFields.includes(field))
     )
-      throw new AppError("Forbidden", 403);
+      return;
     if (
-      fields.some((field) =>
-        [
-          "resolutionSummary",
-          "rootCauseCategory",
-          "reproducedByDev",
-          "fixReference",
-        ].includes(field),
-      )
+      can(actor.role, "editAnyBug", {
+        isNonReporterField: !fields.some((field) =>
+          reporterFields.includes(field),
+        ),
+      })
     )
-      throw new AppError("Testers cannot edit resolution fields", 403);
-    return;
+      return;
   }
-  const reporterFields = [
-    "title",
-    "severity",
-    "reproducibility",
-    "areaId",
-    "osName",
-    "osVersion",
-    "browserOrDevice",
-    "appVersion",
-    "envType",
-    "expectedBehaviour",
-    "actualBehaviour",
-    "extraContext",
-    "steps",
-  ];
-  if (fields.some((field) => reporterFields.includes(field)))
-    throw new AppError("Developers cannot edit reporter fields", 403);
+  throw new AppError("Forbidden", 403);
 }

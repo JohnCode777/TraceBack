@@ -6,9 +6,9 @@ import { BugForm } from "@/components/bug-form";
 export default async function NewBugPage({
   params,
 }: {
-  params: Promise<{ projectId: string }>;
+  params: Promise<{ id: string }>;
 }) {
-  const { projectId } = await params;
+  const { id: projectId } = await params;
   try {
     await projectActor(projectId);
   } catch {

@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: [
     "@prisma/adapter-libsql",
     "@prisma/client",
+    "@libsql/client",
     "libsql",
   ],
 };

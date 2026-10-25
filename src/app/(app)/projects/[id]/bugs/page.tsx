@@ -6,11 +6,11 @@ import { projectActor } from "@/lib/request";
 import { listSchema } from "@/lib/validation";
 
 type Props = {
-  params: Promise<{ projectId: string }>;
+  params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 export default async function BugListPage({ params, searchParams }: Props) {
-  const { projectId } = await params;
+  const { id: projectId } = await params;
   let actor;
   try {
     actor = await projectActor(projectId);

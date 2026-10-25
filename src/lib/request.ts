@@ -1,5 +1,5 @@
 import { ZodError, type ZodType } from "zod";
-import { auth } from "./auth";
+import { auth } from "../auth";
 import { db } from "./db";
 import { AppError, errorResponse } from "./errors";
 import { requireMember } from "./policy";
