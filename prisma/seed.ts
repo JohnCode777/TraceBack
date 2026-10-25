@@ -3,6 +3,7 @@ import { PrismaLibSQL } from "@prisma/adapter-libsql";
 import { hash } from "bcryptjs";
 import { databasePath } from "./database-url";
 import { buildSeedBugs, seedAreas, seedProjects, seedRoles } from "./seed-plan";
+import { evaluate } from "../src/lib/completeness";
 
 const prisma = new PrismaClient({
   adapter: new PrismaLibSQL({ url: `file:${databasePath()}` }),
@@ -53,6 +54,7 @@ async function main() {
 
   for (const bug of buildSeedBugs()) {
     const { steps, notes, statusChanges, ...fields } = bug;
+    const completeness = evaluate({ ...fields, steps });
     await prisma.bug.upsert({
       where: {
         projectId_number: {
@@ -60,9 +62,14 @@ async function main() {
           number: fields.number,
         },
       },
-      update: {},
+      update: {
+        completenessScore: completeness.score,
+        completenessLevel: completeness.level,
+      },
       create: {
         ...fields,
+        completenessScore: completeness.score,
+        completenessLevel: completeness.level,
         steps: { create: steps },
         notes: { create: notes },
         statusChanges: { create: statusChanges },

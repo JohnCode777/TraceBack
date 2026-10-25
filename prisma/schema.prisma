@@ -99,6 +99,10 @@ model Bug {
   @@index([projectId, severity])
   @@index([projectId, areaId])
   @@index([projectId, createdAt])
+  @@index([projectId, status, createdAt])
+  @@index([projectId, severity, createdAt])
+  @@index([projectId, areaId, createdAt])
+  @@index([projectId, completenessLevel, createdAt])
 }
 
 model ReproStep {

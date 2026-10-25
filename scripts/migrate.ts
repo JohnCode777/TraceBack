@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { databasePath } from "../prisma/database-url";
+import { backfillCompleteness } from "./backfill-completeness";
 
 const database = new DatabaseSync(databasePath());
 database.exec("PRAGMA foreign_keys = ON");
@@ -36,6 +37,8 @@ try {
     database.exec("BEGIN IMMEDIATE");
     try {
       database.exec(sql);
+      if (name === "20261025220000_session4_query_indexes")
+        backfillCompleteness(database);
       database
         .prepare(
           'INSERT INTO "_prisma_migrations" (id, checksum, migration_name, finished_at, applied_steps_count) VALUES (?, ?, ?, CURRENT_TIMESTAMP, 1)',

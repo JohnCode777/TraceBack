@@ -27,3 +27,11 @@
 
 1. **Edit audit.** The existing schema has no edit-history model. Bug edits and assignments append a reserved, uneditable Observation note showing previous and new values. The activity feed shows these entries alongside notes and status changes. This avoids a schema change outside the specified data model while preserving a durable trail for non-trivial edits.
 2. **Bug creation.** The database atomically increments `nextBugNumber` in the same transaction as bug insertion. A bounded retry handles transient SQLite write contention.
+
+## Session 4
+
+1. **Integrating current `main`.** Sessions 2 and 3 landed on `main` while this task was in progress. Session 4 uses their Auth.js session, policy, project shell, bug services and routes so it preserves the existing workflow.
+2. **Scoring existing reports.** The Session 4 migration backfills existing scores with the pure evaluator. Create, edit and seed paths use the same evaluator. An absent severity does not auto-award evidence points; only Medium and Low do.
+3. **Dashboard project filter.** One member project is selected at a time so every chart segment can link to its existing project bug list. The selected created-date range applies to all metrics; 30/90-day area windows apply inside that range.
+4. **PDF font and packaging.** PDFKit uses bundled DejaVu Sans for supported Unicode text. Next.js leaves PDFKit external so its built-in font metrics remain available at runtime.
+5. **Query indexes.** Composite project/status, severity, area and completeness indexes with created date match list filters. The existing project/date index serves the dashboard date query.
