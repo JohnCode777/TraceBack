@@ -17,5 +17,5 @@
 ## Session 3
 
 1. **Missing Session 2 prerequisite.** This checkout has Session 1 merged, but no Session 2. Session 3 needs an authenticated actor and centralized project policy, so it includes only credentials sign-in for existing seeded users and the bug-specific policy. Registration, project management, membership management, rate limiting, and the full app shell remain Session 2 work.
-2. **Edit audit.** The existing schema has no edit-history model. Bug edits and assignments append a reserved, uneditable Observation note listing changed field names. The activity feed shows these entries alongside notes and status changes. This avoids a schema change outside the specified data model while preserving a durable trail for non-trivial edits.
+2. **Edit audit.** The existing schema has no edit-history model. Bug edits and assignments append a reserved, uneditable Observation note showing previous and new values. The activity feed shows these entries alongside notes and status changes. This avoids a schema change outside the specified data model while preserving a durable trail for non-trivial edits.
 3. **Bug creation.** The database atomically increments `nextBugNumber` in the same transaction as bug insertion. A bounded retry handles transient SQLite write contention.

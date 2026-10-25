@@ -175,6 +175,13 @@ describe("bug workflow integration", () => {
         where: { bugId: bug.id, body: { startsWith: "[Edit log]" } },
       }),
     ).toBe(2);
+    expect(
+      (
+        await client.note.findFirst({
+          where: { bugId: bug.id, body: { contains: "title:" } },
+        })
+      )?.body,
+    ).toContain('"Unable to save changes" → "Saving edits fails"');
     const note = await addNote(
       "project",
       bug.id,

@@ -194,6 +194,14 @@ export async function editBug(
   )
     changed.push("steps");
   if (changed.length === 0) return original;
+  const audit = changed.map((key) => {
+    const before =
+      key === "steps"
+        ? original.steps.map((step) => step.instruction)
+        : original[key as keyof typeof original];
+    const after = key === "steps" ? steps : fields[key as keyof typeof fields];
+    return `${key}: ${JSON.stringify(before)} → ${JSON.stringify(after)}`;
+  });
   return client.$transaction(async (tx) => {
     if (steps) {
       await tx.reproStep.deleteMany({ where: { bugId } });
@@ -211,7 +219,7 @@ export async function editBug(
         bugId,
         authorId: actor.id,
         type: "Observation",
-        body: `[Edit log] Changed: ${changed.join(", ")}`,
+        body: `[Edit log]\n${audit.join("\n")}`,
       },
     });
     return bug;
@@ -247,7 +255,7 @@ export async function assignBug(
         bugId,
         authorId: actor.id,
         type: "Observation",
-        body: `[Edit log] Assignee ${assigneeId ? `set to ${assigneeId}` : "cleared"}`,
+        body: `[Edit log]\nassigneeId: ${JSON.stringify(bug.assigneeId)} → ${JSON.stringify(assigneeId)}`,
       },
     });
     return updated;
