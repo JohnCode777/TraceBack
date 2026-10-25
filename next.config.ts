@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     "@prisma/client",
     "@libsql/client",
     "libsql",
+    "pdfkit",
   ],
 };
 

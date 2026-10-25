@@ -7,6 +7,7 @@ import { getBug } from "@/lib/bugs";
 import { projectActor } from "@/lib/request";
 import { BugActions, NoteEditor } from "@/components/bug-actions";
 import { BugForm } from "@/components/bug-form";
+import { evaluate } from "@/lib/completeness";
 
 type Props = { params: Promise<{ id: string; bugId: string }> };
 export default async function BugDetailPage({ params }: Props) {
@@ -49,6 +50,7 @@ export default async function BugDetailPage({ params }: Props) {
       item: s,
     })),
   ].sort((a, b) => a.at.getTime() - b.at.getTime() || a.id.localeCompare(b.id));
+  const completeness = evaluate(bug);
   return (
     <main className="mx-auto max-w-4xl p-8">
       <Link className="underline" href={`/projects/${projectId}/bugs`}>
@@ -65,6 +67,42 @@ export default async function BugDetailPage({ params }: Props) {
         Reported by {bug.reporter.name} · Assigned to{" "}
         {bug.assignee?.name ?? "nobody"} · Reopened {bug.reopenCount} times
       </p>
+      <div className="mt-4 flex flex-wrap items-center gap-4">
+        <a
+          className="rounded bg-slate-900 px-4 py-2 text-white"
+          href={`/api/projects/${projectId}/bugs/${bugId}/report`}
+        >
+          Download PDF report
+        </a>
+        <span
+          className={
+            completeness.level === "Incomplete"
+              ? "font-semibold text-amber-800"
+              : "font-semibold"
+          }
+        >
+          {completeness.level} · {completeness.score}/100
+        </span>
+      </div>
+      <section className="mt-4 rounded border p-4">
+        <h2 className="font-semibold">Completeness reasons</h2>
+        {completeness.missing.length ? (
+          <ul className="list-disc pl-6">
+            {completeness.missing.map((gap) => (
+              <li key={gap.rule}>
+                {gap.rule}: {gap.suggestion}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No outstanding gaps.</p>
+        )}
+        {completeness.warnings.map((warning) => (
+          <p key={warning} className="text-amber-800">
+            {warning}
+          </p>
+        ))}
+      </section>
       <section className="mt-8 grid gap-4">
         <h2 className="text-xl font-semibold">Report</h2>
         <p>Reproducibility: {bug.reproducibility ?? "Unspecified"}</p>

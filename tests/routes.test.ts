@@ -28,6 +28,7 @@ let assignPost: Handler,
   transitionPost: Handler,
   notePost: Handler,
   notePatch: Handler;
+let reportGet: Handler;
 const body = {
   title: "The save button fails",
   steps: ["Open form", "Press save"],
@@ -118,6 +119,11 @@ beforeAll(async () => {
       "../src/app/api/projects/[projectId]/bugs/[bugId]/notes/[noteId]/route"
     )
   ).PATCH as Handler;
+  reportGet = (
+    await import(
+      "../src/app/api/projects/[projectId]/bugs/[bugId]/report/route"
+    )
+  ).GET as Handler;
 });
 afterAll(async () => {
   await client?.$disconnect();
@@ -132,6 +138,7 @@ describe("authenticated bug routes", () => {
       [listGet, "GET", "", undefined],
       [createPost, "POST", "", body],
       [detailGet, "GET", `/${bugId}`, undefined],
+      [reportGet, "GET", `/${bugId}/report`, undefined],
       [detailPatch, "PATCH", `/${bugId}`, { title: "Changed" }],
       [assignPost, "POST", `/${bugId}/assign`, { assigneeId: "developer" }],
       [transitionPost, "POST", `/${bugId}/transition`, { to: "Investigating" }],
@@ -157,6 +164,7 @@ describe("authenticated bug routes", () => {
     activeUser = null;
     for (const [handler, method, suffix, data] of [
       [listGet, "GET", "", undefined],
+      [reportGet, "GET", `/${bugId}/report`, undefined],
       [createPost, "POST", "", body],
       [
         notePost,
@@ -184,6 +192,22 @@ describe("authenticated bug routes", () => {
       201,
     );
   });
+
+  it.each(["tester", "developer", "admin"])(
+    "lets a %s member download a PDF",
+    async (user) => {
+      activeUser = user;
+      const response = await reportGet(
+        request("GET", `/${bugId}/report`),
+        ctx(),
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Type")).toBe("application/pdf");
+      const pdf = Buffer.from(await response.arrayBuffer());
+      expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+      expect(pdf.length).toBeGreaterThan(5_000);
+    },
+  );
 
   it("enforces edit, assign, transition and note permissions at each endpoint", async () => {
     activeUser = "other";
