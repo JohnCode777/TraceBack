@@ -11,3 +11,9 @@
 - Partial: none within Session 1.
 - Known broken: none within Session 1.
 - Deferred by roadmap: authentication, policy, projects, bug workflow, completeness engine, production reports, dashboard and full lifecycle end-to-end test belong to Sessions 2–5.
+
+## Session 3 (in progress)
+
+- Done: pure lifecycle state machine, central bug policy, shared Zod schemas, transactional bug service, credential identity prerequisite.
+- In progress: API routes, UI, integration tests and final checks.
+- Partial: Session 2 was absent in the starting checkout; only its authentication and bug-policy prerequisites are included.

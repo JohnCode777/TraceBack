@@ -13,3 +13,9 @@
 9. **End-to-end scope.** Session 1 has a browser smoke test for the scaffold. The complete tester-to-report scenario belongs to Session 5.
 10. **Dependency boundaries.** Auth.js, Zod and Recharts are deferred until the sessions that use them. All installed package versions are exact and locked.
 11. **Offline-safe Prisma setup.** This environment blocks Prisma's binary CDN. The supported `engineType = "client"` uses the libSQL SQLite adapter at runtime. A small postinstall wrapper points Prisma's generator's unused Rust binary probes to the Node executable; the generated client uses its bundled WASM and adapter. The checked-in Prisma-style SQL migration is applied by a local SQLite runner that tracks the standard `_prisma_migrations` ledger and checksums. This makes clean install and seed independent of the blocked CDN. Future schema changes must include SQL migrations, and the PostgreSQL switch will need its own adapter and migration setup.
+
+## Session 3
+
+1. **Missing Session 2 prerequisite.** This checkout has Session 1 merged, but no Session 2. Session 3 needs an authenticated actor and centralized project policy, so it includes only credentials sign-in for existing seeded users and the bug-specific policy. Registration, project management, membership management, rate limiting, and the full app shell remain Session 2 work.
+2. **Edit audit.** The existing schema has no edit-history model. Bug edits and assignments append a reserved, uneditable Observation note listing changed field names. The activity feed shows these entries alongside notes and status changes. This avoids a schema change outside the specified data model while preserving a durable trail for non-trivial edits.
+3. **Bug creation.** The database atomically increments `nextBugNumber` in the same transaction as bug insertion. A bounded retry handles transient SQLite write contention.
