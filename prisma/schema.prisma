@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite does not support Prisma enums. Domain values remain strings until Zod
+// validation and server-side policy are implemented in their respective sessions.
+model User {
+  id                   String         @id @default(cuid())
+  name                 String
+  email                String         @unique
+  passwordHash         String
+  createdAt            DateTime       @default(now())
+  memberships          ProjectMember[]
+  reportedBugs         Bug[]          @relation("Reporter")
+  assignedBugs         Bug[]          @relation("Assignee")
+  notes                Note[]
+  statusChanges        StatusChange[]
+}
+
+model Project {
+  id            String          @id @default(cuid())
+  name          String
+  key           String          @unique
+  description   String?
+  archivedAt    DateTime?
+  nextBugNumber Int             @default(1)
+  members       ProjectMember[]
+  areas         Area[]
+  bugs          Bug[]
+}
+
+model ProjectMember {
+  projectId String
+  userId    String
+  role      String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([projectId, userId])
+  @@index([userId])
+}
+
+model Area {
+  id        String  @id @default(cuid())
+  projectId String
+  name      String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  bugs      Bug[]
+
+  @@unique([projectId, name])
+}
+
+model Bug {
+  id                  String         @id @default(cuid())
+  projectId           String
+  number              Int
+  title               String
+  severity            String?
+  status              String         @default("Submitted")
+  reproducibility     String?
+  areaId              String?
+  reporterId          String
+  assigneeId          String?
+  osName              String?
+  osVersion           String?
+  browserOrDevice     String?
+  appVersion          String?
+  envType             String?
+  expectedBehaviour   String?
+  actualBehaviour     String?
+  extraContext        String?
+  completenessScore   Int            @default(0)
+  completenessLevel   String         @default("Incomplete")
+  reopenCount         Int            @default(0)
+  reproducedByDev     String?
+  rootCauseCategory   String?
+  resolutionSummary   String?
+  fixReference        String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  fixedAt             DateTime?
+  verifiedAt          DateTime?
+  project             Project        @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  area                Area?          @relation(fields: [areaId], references: [id], onDelete: Restrict)
+  reporter            User           @relation("Reporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  assignee            User?          @relation("Assignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  steps               ReproStep[]
+  notes               Note[]
+  statusChanges       StatusChange[]
+
+  @@unique([projectId, number])
+  @@index([projectId, status])
+  @@index([projectId, severity])
+  @@index([projectId, areaId])
+  @@index([projectId, createdAt])
+}
+
+model ReproStep {
+  id          String @id @default(cuid())
+  bugId       String
+  position    Int
+  instruction String
+  bug         Bug    @relation(fields: [bugId], references: [id], onDelete: Restrict)
+
+  @@unique([bugId, position])
+}
+
+model Note {
+  id        String    @id @default(cuid())
+  bugId     String
+  authorId  String
+  type      String
+  body      String
+  editedAt  DateTime?
+  createdAt DateTime  @default(now())
+  bug       Bug       @relation(fields: [bugId], references: [id], onDelete: Restrict)
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([bugId, createdAt])
+}
+
+model StatusChange {
+  id         String   @id @default(cuid())
+  bugId      String
+  fromStatus String
+  toStatus   String
+  actorId    String
+  comment    String?
+  createdAt  DateTime @default(now())
+  bug        Bug      @relation(fields: [bugId], references: [id], onDelete: Restrict)
+  actor      User     @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([bugId, createdAt])
+}
