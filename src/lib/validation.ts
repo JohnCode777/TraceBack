@@ -31,7 +31,7 @@ export const bugFields = z.object({
   title: z.string().trim().min(1).max(200),
   severity: severity.nullable().optional(),
   reproducibility: reproducibility.nullable().optional(),
-  areaId: z.string().nullable().optional(),
+  areaId: z.string().min(1).max(128).nullable().optional(),
   osName: optionalText,
   osVersion: optionalText,
   browserOrDevice: optionalText,
@@ -48,7 +48,7 @@ export const editBugSchema = bugFields.partial().extend({
   rootCauseCategory: rootCause.nullable().optional(),
   reproducedByDev: reproducedByDev.nullable().optional(),
   fixReference: optionalText,
-  assigneeId: z.string().nullable().optional(),
+  assigneeId: z.string().min(1).max(128).nullable().optional(),
 });
 export const transitionSchema = z.object({
   to: z.enum(["Submitted", "Investigating", "Fixed", "Verified"]),
@@ -62,10 +62,18 @@ export const noteSchema = z.object({
   type: noteType,
   body: z.string().trim().min(1).max(10000),
 });
-export const assignSchema = z.object({ assigneeId: z.string().nullable() });
-export const projectParams = z.object({ projectId: z.string().min(1) });
-export const bugParams = projectParams.extend({ bugId: z.string().min(1) });
-export const noteParams = bugParams.extend({ noteId: z.string().min(1) });
+export const assignSchema = z.object({
+  assigneeId: z.string().min(1).max(128).nullable(),
+});
+export const projectParams = z.object({
+  projectId: z.string().min(1).max(128),
+});
+export const bugParams = projectParams.extend({
+  bugId: z.string().min(1).max(128),
+});
+export const noteParams = bugParams.extend({
+  noteId: z.string().min(1).max(128),
+});
 const blankAsMissing = <T extends z.ZodType>(schema: T) =>
   z.preprocess(
     (value) => (value === "" ? undefined : value),
@@ -76,9 +84,9 @@ export const listSchema = z.object({
     z.enum(["Submitted", "Investigating", "Fixed", "Verified"]),
   ),
   severity: blankAsMissing(severity),
-  area: blankAsMissing(z.string()),
-  reporter: blankAsMissing(z.string()),
-  assignee: blankAsMissing(z.string()),
+  area: blankAsMissing(z.string().max(128)),
+  reporter: blankAsMissing(z.string().max(128)),
+  assignee: blankAsMissing(z.string().max(128)),
   q: blankAsMissing(z.string().max(200)),
   incomplete: blankAsMissing(z.enum(["1"])),
   unresolved: blankAsMissing(z.enum(["1"])),
@@ -86,5 +94,5 @@ export const listSchema = z.object({
   from: blankAsMissing(z.iso.date()),
   to: blankAsMissing(z.iso.date()),
   sort: z.enum(["newest", "oldest", "severity", "title"]).default("newest"),
-  page: z.coerce.number().int().min(1).default(1),
+  page: z.coerce.number().int().min(1).max(100_000).default(1),
 });
