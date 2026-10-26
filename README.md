@@ -4,18 +4,17 @@ TraceBack helps a tester write reproducible bug reports, a developer investigate
 
 ## Run it in under 10 minutes
 
-Use Node.js 24 and npm on macOS or Linux. From a fresh clone, run:
+Use Node.js 24 and npm on Windows (PowerShell), macOS or Linux. From a fresh clone, run these commands in order:
 
 ```bash
 npm ci
-cp .env.example .env
-node -e 'const fs=require("node:fs"),crypto=require("node:crypto");const p=".env";fs.writeFileSync(p,fs.readFileSync(p,"utf8").replace(/AUTH_SECRET=.*/,`AUTH_SECRET="${crypto.randomBytes(32).toString("hex")}"`))'
+node -e "const fs=require('node:fs'),crypto=require('node:crypto');fs.writeFileSync('.env',fs.readFileSync('.env.example','utf8').replace(/AUTH_SECRET=.*/, 'AUTH_SECRET='+crypto.randomBytes(32).toString('hex')))"
 npm run migrate
 npm run seed
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Sign in as `tester1@example.test` or `developer1@example.test` with the **fake local demo password** `traceback-demo-password`. The seed also creates `admin1@example.test`, two projects and 50 synthetic bugs. The seeded users and data are for local evaluation only. Registration is available; a new account starts without a project until it creates one or an Admin adds it.
+Open the address printed by `npm run dev` (normally [http://localhost:3000](http://localhost:3000)). Sign in as `tester1@example.test` or `developer1@example.test` with the **fake local demo password** `traceback-demo-password`. The seed also creates `admin1@example.test`, two projects and 50 synthetic bugs. The seeded users and data are for local evaluation only. Registration is available; a new account starts without a project until it creates one or an Admin adds it.
 
 The `.env` file and SQLite databases are ignored by Git. `npm run seed` can be rerun without replacing existing seeded bugs. The first `npm ci` needs access to the npm registry; the Prisma client generator is configured to avoid downloading unused Rust engines.
 
@@ -23,7 +22,7 @@ The `.env` file and SQLite databases are ignored by Git. `npm run seed` can be r
 
 | Variable       | Purpose                                                                                             |
 | -------------- | --------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL` | Required at runtime. For local SQLite, use `file:./dev.db`; this is resolved to `prisma/dev.db`.    |
+| `DATABASE_URL` | Local SQLite path. `file:./dev.db` resolves to `dev.db` in the project root on all platforms.       |
 | `AUTH_SECRET`  | Required for Auth.js session signing. Use a new random value per deployment and keep it out of Git. |
 | `AUTH_URL`     | Set to the public HTTPS origin when deploying behind a proxy if Auth.js cannot infer it.            |
 
@@ -52,7 +51,7 @@ If Chromium is already installed outside Playwright's cache, set `PLAYWRIGHT_CHR
 - `src/app/` contains App Router pages, server actions and authenticated bug API routes. `src/auth.ts` configures Auth.js credentials and JWT sessions.
 - `src/lib/policy.ts` holds project-role permissions; `src/lib/state-machine.ts` holds the pure lifecycle rules. Services in `src/lib/projects.ts` and `src/lib/bugs.ts` enforce both on the server and scope reads to project membership.
 - Zod schemas in `src/lib/validation.ts` and `src/lib/validators.ts` validate inputs. `src/lib/completeness.ts` scores reports. `src/lib/stats.ts` calculates dashboard numbers, and `src/lib/report.ts` creates PDFKit reports.
-- Prisma uses the libSQL SQLite adapter. `prisma/schema.prisma` defines the model; `prisma.config.ts` provides the datasource URL. `scripts/migrate.ts` applies committed SQLite migrations, and `prisma/seed.ts` creates fake demo data.
+- Prisma uses the libSQL SQLite adapter. `prisma/schema.prisma` defines the model; `prisma/database-url.ts` resolves the same absolute database path for the Prisma CLI, migration runner, seed and app. `scripts/migrate.ts` applies committed SQLite migrations, and `prisma/seed.ts` creates fake demo data.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/SECURITY.md](docs/SECURITY.md), [docs/PERFORMANCE.md](docs/PERFORMANCE.md) and [docs/STATUS.md](docs/STATUS.md) for the detailed design, audit, load check and current limitations.
 

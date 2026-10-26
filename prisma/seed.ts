@@ -1,12 +1,12 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
 import { hash } from "bcryptjs";
-import { databasePath } from "./database-url";
+import { databaseUrl } from "./database-url";
 import { buildSeedBugs, seedAreas, seedProjects, seedRoles } from "./seed-plan";
 import { evaluate } from "../src/lib/completeness";
 
 const prisma = new PrismaClient({
-  adapter: new PrismaLibSql({ url: `file:${databasePath()}` }),
+  adapter: new PrismaLibSql({ url: databaseUrl() }),
 });
 
 async function main() {
