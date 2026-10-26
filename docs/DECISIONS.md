@@ -35,3 +35,7 @@
 3. **Dashboard project filter.** One member project is selected at a time so every chart segment can link to its existing project bug list. The selected created-date range applies to all metrics; 30/90-day area windows apply inside that range.
 4. **PDF font and packaging.** PDFKit uses bundled DejaVu Sans for supported Unicode text. Next.js leaves PDFKit external so its built-in font metrics remain available at runtime.
 5. **Query indexes.** Composite project/status, severity, area and completeness indexes with created date match list filters. The existing project/date index serves the dashboard date query.
+
+## Session 5
+
+1. **Dependency remediation.** Upgrade Auth.js, Zod, Next.js, Playwright, Vitest and Prisma to exact versions with no reported production dependency advisories. Prisma 7 keeps the existing SQLite adapter and checked-in SQL migration runner; its datasource URL now lives in `prisma.config.ts`. Next.js builds with webpack because its default Turbopack build cannot bind a subprocess port in this managed sandbox. Three moderate audit findings remain in Tailwind 3's build-time dependency tree; changing to Tailwind 4 requires a separate CSS migration.

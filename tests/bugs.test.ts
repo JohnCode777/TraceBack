@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { PrismaClient } from "@prisma/client";
-import { PrismaLibSQL } from "@prisma/adapter-libsql";
+import { PrismaLibSql } from "@prisma/adapter-libsql";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   addNote,
@@ -46,7 +46,7 @@ beforeEach(async () => {
   );
   sqlite.close();
   client = new PrismaClient({
-    adapter: new PrismaLibSQL({ url: `file:${path}` }),
+    adapter: new PrismaLibSql({ url: `file:${path}` }),
   });
   for (const actor of [tester, otherTester, developer, admin])
     await client.user.create({

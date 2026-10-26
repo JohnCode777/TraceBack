@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaLibSQL } from "@prisma/adapter-libsql";
+import { PrismaLibSql } from "@prisma/adapter-libsql";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { databasePath } from "../../prisma/database-url";
@@ -13,5 +13,5 @@ const path =
     : resolve(process.cwd(), "prisma", "dev.db");
 export const db =
   globalDb.tracebackDb ??
-  new PrismaClient({ adapter: new PrismaLibSQL({ url: `file:${path}` }) });
+  new PrismaClient({ adapter: new PrismaLibSql({ url: `file:${path}` }) });
 if (process.env.NODE_ENV !== "production") globalDb.tracebackDb = db;
