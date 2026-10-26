@@ -13,7 +13,6 @@
     "migrate": "node --import tsx scripts/migrate.ts",
     "seed": "node --import tsx prisma/seed.ts",
     "perf:check": "node --import tsx scripts/perf-check.ts",
-    "pdf:spike": "node --import tsx scripts/pdf-spike.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "postinstall": "node scripts/generate-prisma.mjs"
