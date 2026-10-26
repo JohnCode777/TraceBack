@@ -46,3 +46,16 @@
 - Partial: none within Session 4.
 - Known broken: none found within Session 4.
 - Deferred by roadmap: the full lifecycle to report-download end-to-end flow and hardening are Session 5.
+
+## Session 5
+
+- Done: upgraded exact-version runtime dependencies, including Auth.js and Prisma 7, without `--force`. `npm audit --omit=dev` reports 0 vulnerabilities. A clean `npm ci`, migration and seed succeed.
+- Done: reviewed every app page, custom API route and server action in `docs/SECURITY.md`. JSON mutations now enforce browser origin/fetch metadata, JSON content type and a request size limit; global security headers and route tests are in place. Markdown remains sanitised and rendered text is escaped by React.
+- Done: Playwright covers a tester filing a report, developer investigation and fix, tester reopen and verification, PDF download, and regression. CI now installs Chromium and runs this flow with an ephemeral Auth.js secret.
+- Done: `npm run perf:check` creates 1,200 synthetic bugs and checks list pagination, dashboard totals, query counts and the SQLite index plan. Local medians were 2.68 ms for page 1, 2.71 ms for page 50, and 14.30 ms for stats; list used 5 queries per page and stats used 4. See `docs/PERFORMANCE.md`.
+- Done: README quick start, environment and script reference, architecture and deployment notes, and Postgres migration instructions; a linked reporting-help page; transition confirmations, clearer labels/focus, and an empty dashboard message. Removed the PDF spike and redundant scaffold browser test.
+- Local checks: lint, type-check, 104 unit/integration tests, one full lifecycle Playwright test, formatting and production build passed. CI result is pending the pull request.
+- Partial: full `npm audit` still reports 3 moderate findings in Tailwind 3's development/build dependency tree; the production audit reports 0. The CSP still permits inline scripts/styles required by the current rendering. Dashboard stats materialize all selected bugs; project membership and bug history views are not paginated. Accessibility basics were reviewed and improved, but no automated WCAG/contrast audit was run.
+- Personal-data finding: the history scan found no tracked secrets, `.env` or database files, and demo records are synthetic. It did find real contributor email addresses in the bundled font license and personal author emails in existing `main` commit metadata. This PR cannot remove that historical metadata; a literal no-personal-data claim is not met.
+- Known broken: none in the local checks above. Remote CI and deployment behavior are not yet verified.
+- Skipped: an external penetration test, large-scale load testing beyond 1,200 bugs, a working Postgres migration, and rewriting existing `main` history. The README documents the Postgres switch; implementation was outside Session 5.

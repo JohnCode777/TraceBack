@@ -119,6 +119,11 @@ export default async function Dashboard({
         </button>
       </form>
       <p>{stats.total} bugs in the selected range.</p>
+      {!selected && (
+        <p role="status" className="rounded border bg-white p-4">
+          Create or join a project to see dashboard statistics.
+        </p>
+      )}
       {selected && (
         <DashboardCharts
           stats={stats}

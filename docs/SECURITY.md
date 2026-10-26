@@ -71,6 +71,6 @@ The audit is based on source review, automated tests and dependency advisory dat
 
 ## Repository and history scan
 
-On 26 October 2026, a scan of all 219 Git blobs then reachable from local and fetched `main` refs found no PEM private keys, AWS access keys, GitHub or OpenAI token patterns, or JWTs. No `.env` file, database file, private key file or PDF is tracked in those refs; `.env.example` is tracked by design. The seeded application users use `example.test` addresses and synthetic names and reports.
+On 26 October 2026, a scan of all Git blobs reachable from local and fetched `main` refs found no PEM private keys, AWS access keys, GitHub or OpenAI token patterns, or JWTs. No `.env` file, database file, private key file or PDF is tracked in those refs; `.env.example` is tracked by design. The seeded application users use `example.test` addresses and synthetic names and reports.
 
 The scan did find public contributor email addresses in the bundled DejaVu font license, and existing `main` commits have personal author email metadata. Those are real personal identifiers in repository history, so a literal claim that the repository and history contain no personal data would be false. License attribution must be retained; removing past commit metadata would require a coordinated history rewrite outside this pull request. This branch uses a GitHub no-reply identity for its final commits.

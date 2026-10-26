@@ -42,9 +42,13 @@ test("tester files, developer fixes, tester verifies and downloads a report", as
   await tester.goBack();
   const title = `Session 3 browser flow ${Date.now()}`;
   await tester.getByLabel("Title").fill(title);
-  await tester.getByLabel("Step 1").fill("Open the report");
+  await tester
+    .getByRole("textbox", { name: "Step 1", exact: true })
+    .fill("Open the report");
   await tester.getByRole("button", { name: "Add step" }).click();
-  await tester.getByLabel("Step 2").fill("Press save");
+  await tester
+    .getByRole("textbox", { name: "Step 2", exact: true })
+    .fill("Press save");
   await tester.getByLabel("Expected behaviour").fill("The report is saved");
   await tester.getByLabel("Actual behaviour").fill("An error is shown");
   await tester.getByRole("button", { name: "Create bug" }).click();
