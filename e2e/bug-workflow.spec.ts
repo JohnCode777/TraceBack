@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 async function login(page: Page, email: string) {
   await page.goto("/login");
@@ -15,15 +16,23 @@ async function login(page: Page, email: string) {
   ).toBeVisible();
 }
 
-test("bug goes through investigation, fix, reopen, verification and regression", async ({
+test("tester files, developer fixes, tester verifies and downloads a report", async ({
   browser,
 }) => {
   const testerContext = await browser.newContext();
   const developerContext = await browser.newContext();
   const tester = await testerContext.newPage();
   const developer = await developerContext.newPage();
+  tester.on("dialog", (dialog) => dialog.accept());
+  developer.on("dialog", (dialog) => dialog.accept());
   await login(tester, "tester1@example.test");
-  await tester.goto("/projects/seed-project-traceback/bugs/new");
+  const formResponse = await tester.goto(
+    "/projects/seed-project-traceback/bugs/new",
+  );
+  expect(formResponse?.headers()["x-content-type-options"]).toBe("nosniff");
+  expect(formResponse?.headers()["content-security-policy"]).toContain(
+    "frame-ancestors 'none'",
+  );
   const title = `Session 3 browser flow ${Date.now()}`;
   await tester.getByLabel("Title").fill(title);
   await tester.getByLabel("Step 1").fill("Open the report");
@@ -60,6 +69,13 @@ test("bug goes through investigation, fix, reopen, verification and regression",
   await tester.reload();
   await tester.getByRole("button", { name: "Update status" }).click();
   await expect(tester.locator("main > p").first()).toContainText("Verified");
+  const downloadReady = tester.waitForEvent("download");
+  await tester.getByRole("link", { name: "Download PDF report" }).click();
+  const download = await downloadReady;
+  expect(download.suggestedFilename()).toMatch(/^TB-\d+\.pdf$/);
+  const pdf = await readFile(await download.path());
+  expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+  expect(pdf.length).toBeGreaterThan(5_000);
   await tester.getByLabel("Comment or reason").fill("Regression after release");
   await tester.getByRole("button", { name: "Update status" }).click();
   await expect(tester.getByText("Regression after release")).toBeVisible();

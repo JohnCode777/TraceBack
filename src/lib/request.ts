@@ -26,8 +26,16 @@ export async function parseJson<T>(
   // JSON also prevents a cross-site HTML form from sending a valid payload.
   const origin = request.headers.get("origin");
   const site = request.headers.get("sec-fetch-site");
+  const url = new URL(request.url);
+  // Next.js may normalize request.url to localhost behind a proxy. Host and
+  // X-Forwarded-Proto retain the public origin received by the browser.
+  const host = request.headers.get("host") ?? url.host;
+  const protocol =
+    request.headers.get("x-forwarded-proto")?.split(",")[0].trim() ??
+    url.protocol.slice(0, -1);
+  const expectedOrigin = `${protocol}://${host}`;
   if (
-    (origin !== null && origin !== new URL(request.url).origin) ||
+    (origin !== null && origin !== expectedOrigin) ||
     (site !== null && site !== "same-origin") ||
     (origin === null && site === null)
   )

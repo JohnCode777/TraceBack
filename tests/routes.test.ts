@@ -187,6 +187,11 @@ describe("authenticated bug routes", () => {
     const oversized = request("POST", "", body);
     oversized.headers.set("Content-Length", "262145");
     expect((await createPost(oversized, ctx())).status).toBe(413);
+    const proxied = request("POST", "", { title: "", steps: [] });
+    proxied.headers.set("Host", "traceback.example.test");
+    proxied.headers.set("X-Forwarded-Proto", "https");
+    proxied.headers.set("Origin", "https://traceback.example.test");
+    expect((await createPost(proxied, ctx())).status).toBe(400);
   });
   it("returns 404 for nonmembers on every endpoint", async () => {
     activeUser = "outsider";

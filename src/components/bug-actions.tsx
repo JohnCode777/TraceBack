@@ -46,6 +46,8 @@ export function BugActions({
       setError(parsed.error.issues.map((i) => i.message).join("; "));
       return;
     }
+    if (!window.confirm(`Move this bug from ${status} to ${parsed.data.to}?`))
+      return;
     await post("transition", parsed.data);
   }
   async function note(event: FormEvent<HTMLFormElement>) {
@@ -86,18 +88,21 @@ export function BugActions({
           className="grid gap-2"
         >
           <h2 className="text-xl font-semibold">Assign developer</h2>
-          <select
-            name="assigneeId"
-            className="border p-2"
-            defaultValue={assigneeId ?? ""}
-          >
-            <option value="">Unassigned</option>
-            {developers.map((d) => (
-              <option key={d.userId} value={d.userId}>
-                {d.user.name}
-              </option>
-            ))}
-          </select>
+          <label>
+            Developer
+            <select
+              name="assigneeId"
+              className="block w-full border p-2"
+              defaultValue={assigneeId ?? ""}
+            >
+              <option value="">Unassigned</option>
+              {developers.map((d) => (
+                <option key={d.userId} value={d.userId}>
+                  {d.user.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <button className="w-fit rounded bg-slate-900 p-2 text-white">
             Assign
           </button>
@@ -256,7 +261,14 @@ export function NoteEditor({
       className="mt-2 grid gap-2"
     >
       <input type="hidden" name="type" value={type} />
-      <textarea name="body" defaultValue={body} className="border p-2" />
+      <label>
+        Note
+        <textarea
+          name="body"
+          defaultValue={body}
+          className="block w-full border p-2"
+        />
+      </label>
       <div className="flex gap-3">
         <button className="underline">Save</button>
         <button
