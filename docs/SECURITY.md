@@ -17,6 +17,7 @@ Reviewed on 26 October 2026 against the Session 5 branch. The source of truth fo
 | `/projects/[id]/bugs/new`     | `projectActor` checks membership before loading project areas; creation route checks again.                                                                | Form and POST use `createBugSchema`.                                                     |
 | `/projects/[id]/bugs/[bugId]` | `projectActor` checks membership; `getBug` queries by both bug and project IDs. Note/edit controls are cosmetic; API enforces them.                        | IDs are used in parameterized queries; mutations use Zod.                                |
 | `/dashboard`                  | Session required. Project choices come only from `listProjects`; an unowned `project` filter gets 404. Bug query is scoped to the selected member project. | Zod checks project ID and ISO date filters.                                              |
+| `/help/reporting`             | Session required by app layout; static guidance only, with no project data access.                                                                         | No input.                                                                                |
 
 The shared app layout requires a session for every route in the `(app)` group. The not-found and error components only render fixed text and have no data access.
 

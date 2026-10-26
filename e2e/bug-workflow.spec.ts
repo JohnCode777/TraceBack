@@ -33,6 +33,13 @@ test("tester files, developer fixes, tester verifies and downloads a report", as
   expect(formResponse?.headers()["content-security-policy"]).toContain(
     "frame-ancestors 'none'",
   );
+  await tester
+    .getByRole("link", { name: "Tips for a good bug report" })
+    .click();
+  await expect(
+    tester.getByRole("heading", { name: "How to write a good bug report" }),
+  ).toBeVisible();
+  await tester.goBack();
   const title = `Session 3 browser flow ${Date.now()}`;
   await tester.getByLabel("Title").fill(title);
   await tester.getByLabel("Step 1").fill("Open the report");
