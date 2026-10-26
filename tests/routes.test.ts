@@ -40,7 +40,7 @@ const ctx = () => ({
 const request = (method: string, suffix = "", data?: unknown) =>
   new Request(`http://localhost/api/projects/project/bugs${suffix}`, {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Origin: "http://localhost" },
     body: data === undefined ? undefined : JSON.stringify(data),
   });
 
@@ -132,6 +132,67 @@ afterAll(async () => {
 });
 
 describe("authenticated bug routes", () => {
+  it("rejects cross-origin writes on every JSON mutation route", async () => {
+    for (const [user, handler, method, suffix, data] of [
+      ["tester", createPost, "POST", "", body],
+      ["tester", detailPatch, "PATCH", `/${bugId}`, { title: "Changed" }],
+      [
+        "developer",
+        assignPost,
+        "POST",
+        `/${bugId}/assign`,
+        { assigneeId: "developer" },
+      ],
+      [
+        "developer",
+        transitionPost,
+        "POST",
+        `/${bugId}/transition`,
+        { to: "Investigating" },
+      ],
+      [
+        "tester",
+        notePost,
+        "POST",
+        `/${bugId}/notes`,
+        { type: "Observation", body: "note" },
+      ],
+      [
+        "tester",
+        notePatch,
+        "PATCH",
+        `/${bugId}/notes/${noteId}`,
+        { type: "Observation", body: "edited" },
+      ],
+    ] as const) {
+      activeUser = user;
+      const crossOrigin = request(method, suffix, data);
+      crossOrigin.headers.set("Origin", "https://attacker.example");
+      expect((await handler(crossOrigin, ctx())).status).toBe(403);
+    }
+  });
+
+  it("requires an origin or same-origin fetch metadata and JSON content type", async () => {
+    activeUser = "tester";
+    const noOrigin = request("POST", "", body);
+    noOrigin.headers.delete("Origin");
+    expect((await createPost(noOrigin, ctx())).status).toBe(403);
+    const sameOriginFetch = request("POST", "", { title: "", steps: [] });
+    sameOriginFetch.headers.delete("Origin");
+    sameOriginFetch.headers.set("Sec-Fetch-Site", "same-origin");
+    expect((await createPost(sameOriginFetch, ctx())).status).toBe(400);
+    const form = request("POST", "", body);
+    form.headers.set("Content-Type", "text/plain");
+    expect((await createPost(form, ctx())).status).toBe(415);
+    const oversized = request("POST", "", body);
+    oversized.headers.set("Content-Length", "262145");
+    expect((await createPost(oversized, ctx())).status).toBe(413);
+    const proxied = request("POST", "", { title: "", steps: [] });
+    proxied.headers.set("Host", "traceback.example.test");
+    proxied.headers.set("X-Forwarded-Proto", "https");
+    proxied.headers.set("Origin", "https://traceback.example.test");
+    expect((await createPost(proxied, ctx())).status).toBe(400);
+  });
   it("returns 404 for nonmembers on every endpoint", async () => {
     activeUser = "outsider";
     for (const [handler, method, suffix, data] of [

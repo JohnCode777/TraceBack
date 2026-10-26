@@ -30,6 +30,9 @@ export default async function AppLayout({
             <Link className="text-blue-700 underline" href="/dashboard">
               Dashboard
             </Link>
+            <Link className="text-blue-700 underline" href="/help/reporting">
+              Reporting help
+            </Link>
             <Link className="text-blue-700 underline" href="/projects/new">
               New project
             </Link>

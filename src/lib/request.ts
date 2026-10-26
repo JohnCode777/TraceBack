@@ -22,7 +22,34 @@ export async function parseJson<T>(
   request: Request,
   schema: ZodType<T>,
 ): Promise<T> {
-  return schema.parse(await request.json());
+  // Cookie-authenticated API writes must come from this exact origin. Requiring
+  // JSON also prevents a cross-site HTML form from sending a valid payload.
+  const origin = request.headers.get("origin");
+  const site = request.headers.get("sec-fetch-site");
+  const url = new URL(request.url);
+  // Next.js may normalize request.url to localhost behind a proxy. Host and
+  // X-Forwarded-Proto retain the public origin received by the browser.
+  const host = request.headers.get("host") ?? url.host;
+  const protocol =
+    request.headers.get("x-forwarded-proto")?.split(",")[0].trim() ??
+    url.protocol.slice(0, -1);
+  const expectedOrigin = `${protocol}://${host}`;
+  if (
+    (origin !== null && origin !== expectedOrigin) ||
+    (site !== null && site !== "same-origin") ||
+    (origin === null && site === null)
+  )
+    throw new AppError("Invalid request origin", 403);
+  if (
+    request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !==
+    "application/json"
+  )
+    throw new AppError("Expected application/json", 415);
+  const declaredLength = Number(request.headers.get("content-length") ?? 0);
+  if (declaredLength > 262_144) throw new AppError("Request too large", 413);
+  const body = await request.text();
+  if (body.length > 262_144) throw new AppError("Request too large", 413);
+  return schema.parse(JSON.parse(body));
 }
 
 export function responseError(error: unknown) {

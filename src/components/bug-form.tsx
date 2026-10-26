@@ -221,6 +221,7 @@ export function BugForm({
             <button
               type="button"
               className="self-end border p-2"
+              aria-label={`Remove step ${index + 1}`}
               onClick={() => changeSteps(steps.filter((_, i) => i !== index))}
             >
               Remove

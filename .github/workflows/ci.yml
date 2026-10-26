@@ -22,3 +22,6 @@ jobs:
       - run: npm run type-check
       - run: npm test
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: echo "AUTH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+      - run: npm run e2e

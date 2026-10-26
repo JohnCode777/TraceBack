@@ -1,0 +1,76 @@
+# Security and authorization audit
+
+Reviewed on 26 October 2026 against the Session 5 branch. The source of truth for roles is `src/lib/policy.ts`; `src/lib/state-machine.ts` decides lifecycle roles and allowed transitions. UI role checks only hide controls. API handlers resolve the signed-in user and project membership through `projectActor` before any bug data access. Server actions call project services that repeat membership and role checks. A non-member receives 404 for project resources; an unauthenticated API caller receives 401, while app pages redirect to sign in.
+
+## App pages
+
+| Route                         | Authorization and data scope                                                                                                                               | Input check                                                                              |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `/`                           | Redirects to `/projects`; project list then requires a session.                                                                                            | No input.                                                                                |
+| `/login`                      | Public; signed-in users redirect to `/projects`.                                                                                                           | `registered` only selects a fixed success message. Credentials go through `loginAction`. |
+| `/register`                   | Public; signed-in users redirect to `/projects`.                                                                                                           | Form goes through `registerAction`.                                                      |
+| `/projects`                   | Session required by app layout and page. `listProjects` selects only projects with the current user's membership.                                          | No input.                                                                                |
+| `/projects/new`               | Session required by app layout; creation is checked again by `createProjectAction`.                                                                        | Form uses `createProjectSchema`.                                                         |
+| `/projects/[id]`              | `getProject` queries by ID **and** current-user membership; non-member gets 404.                                                                           | ID is used only in a parameterized Prisma query.                                         |
+| `/projects/[id]/settings`     | `getProject` first checks membership. Only Admin sees settings; other members see a fixed access-denied view. Mutations recheck Admin in services.         | ID is used in a parameterized query; forms have Zod schemas.                             |
+| `/projects/[id]/bugs`         | `projectActor` checks membership before project or bug queries; `listBugs` applies a project ID filter.                                                    | `listSchema` parses filters, date strings, sort and a bounded page number.               |
+| `/projects/[id]/bugs/new`     | `projectActor` checks membership before loading project areas; creation route checks again.                                                                | Form and POST use `createBugSchema`.                                                     |
+| `/projects/[id]/bugs/[bugId]` | `projectActor` checks membership; `getBug` queries by both bug and project IDs. Note/edit controls are cosmetic; API enforces them.                        | IDs are used in parameterized queries; mutations use Zod.                                |
+| `/dashboard`                  | Session required. Project choices come only from `listProjects`; an unowned `project` filter gets 404. Bug query is scoped to the selected member project. | Zod checks project ID and ISO date filters.                                              |
+| `/help/reporting`             | Session required by app layout; static guidance only, with no project data access.                                                                         | No input.                                                                                |
+
+The shared app layout requires a session for every route in the `(app)` group. The not-found and error components only render fixed text and have no data access.
+
+## API routes
+
+All paths below start with `/api/projects/[projectId]/bugs`. `projectActor` runs before a scoped service call. Parameters are parsed by Zod with length bounds, and mutations use `parseJson` for JSON body validation, same-origin checks and a 256 KiB request limit. The report and read routes have no state-changing behavior.
+
+| Method and suffix               | Allowed member roles                                                                                                 | Service-level check and scoped data                                                                                                                                                                   |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /`                         | Tester, Developer, Admin                                                                                             | `listBugs` checks `viewProject`; `projectId` is mandatory in the list and count queries; fixed 20-row pages.                                                                                          |
+| `POST /`                        | Tester, Developer, Admin                                                                                             | `createBug` checks `createBug`, active project and area ownership; number allocation and insert share a transaction.                                                                                  |
+| `GET /[bugId]`                  | Tester, Developer, Admin                                                                                             | `getBug` checks `viewProject` and looks up `{ id: bugId, projectId }`.                                                                                                                                |
+| `PATCH /[bugId]`                | Own pre-Fixed report: Tester; non-reporter fields: Developer; any: Admin                                             | `editBug` loads by bug and project, then `authorizeBug` checks ownership, status and field names; changes are logged.                                                                                 |
+| `POST /[bugId]/assign`          | Developer, Admin                                                                                                     | `assignBug` checks `assignDeveloper`; target must be a Developer member of this project.                                                                                                              |
+| `POST /[bugId]/transition`      | Submitted→Investigating and Investigating→Fixed: Developer/Admin; Fixed→Verified and reopen/regression: Tester/Admin | `transitionBug` loads by project inside a transaction and calls `decideTransition`. Fix fields and reopen reason are required. A non-Admin fixer cannot verify their own fix. History is append-only. |
+| `POST /[bugId]/notes`           | Tester, Developer, Admin                                                                                             | `addNote` checks `addNote` and that the bug belongs to the project.                                                                                                                                   |
+| `PATCH /[bugId]/notes/[noteId]` | Original note author, if a project member                                                                            | `editNote` checks note, bug and project together; edit-log notes cannot be edited.                                                                                                                    |
+| `GET /[bugId]/report`           | Tester, Developer, Admin                                                                                             | `downloadReport` check, then scoped `getBug`; response is a private, uncached PDF attachment.                                                                                                         |
+
+`/api/auth/[...nextauth]` is owned by Auth.js. Its sign-in, sign-out, session and CSRF endpoints do not expose project data. The credentials callback validates with `loginSchema`, uses bcrypt comparison and applies the persistent login throttle. This third-party handler is not routed through `projectActor` because a session does not yet exist at sign-in.
+
+## Server actions
+
+These are the complete exported actions in `src/app/actions.ts`. Next.js/React handle action transport and origin checks; Auth.js handles sign-in and sign-out tokens. Every project mutation rechecks the user and policy in a server service.
+
+| Action                 | Authorization    | Validation and result                                                                                                                      |
+| ---------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `registerAction`       | Public           | `registerUser` parses `registerSchema`, hashes password with bcrypt and rejects duplicate email.                                           |
+| `loginAction`          | Public           | Parses `loginSchema`; Auth.js credentials callback checks the password and throttles failed attempts.                                      |
+| `logoutAction`         | Session optional | Auth.js clears the current session; no project data is read or changed.                                                                    |
+| `createProjectAction`  | Signed-in user   | `createProjectSchema`; creator becomes project Admin.                                                                                      |
+| `editProjectAction`    | Project Admin    | Bounded project ID and `editProjectSchema`; `requireProjectAction` checks membership, Admin role and archived state.                       |
+| `addMemberAction`      | Project Admin    | Bounded project ID and `addMemberSchema`; `requireProjectAction` checks membership, Admin role and archived state; target user must exist. |
+| `archiveProjectAction` | Project Admin    | Bounded project ID; `requireProjectAction` checks membership, Admin role and archived state.                                               |
+
+## Request and output controls
+
+- The six custom JSON mutation endpoints require `Content-Type: application/json` and at least one of `Origin` or `Sec-Fetch-Site`. Any supplied `Origin` must match the public request origin (Host and forwarded protocol); any supplied fetch metadata must say `same-origin`. Cross-origin and missing-origin requests are rejected with 403. A simple cross-site HTML form cannot satisfy the JSON requirement. Auth.js and Next.js provide their own CSRF handling for authentication and server actions.
+- Shared Zod schemas constrain domain values, text lengths, IDs, pagination and dates. Services additionally check project ownership of area and assignee IDs. Prisma parameterizes database queries. Malformed JSON returns 400; oversized JSON returns 413.
+- React escapes report, note and project text. Markdown notes pass through `rehype-sanitize`, and no application code uses `dangerouslySetInnerHTML`. PDFKit writes text into a PDF stream; the download filename uses a project key constrained to 2–5 letters plus a numeric bug number.
+- `next.config.ts` applies CSP, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` and HSTS to all routes. The CSP blocks foreign resources, objects and framing, but permits inline scripts/styles for the current Next.js and chart rendering. HSTS takes effect on HTTPS hosts; TLS and host configuration belong to deployment.
+- The report endpoint sets `Cache-Control: private, no-store`. Authenticated HTML and other JSON responses rely on Next.js dynamic rendering and default cache behavior; explicit no-store on every response remains a hardening opportunity.
+
+## Verification and dependency review
+
+`tests/policy.test.ts`, `tests/session2.test.ts`, `tests/bugs.test.ts` and `tests/routes.test.ts` cover the role matrix, project isolation, lifecycle rules and all custom API routes. Route tests include non-member 404s, allowed and forbidden roles, and cross-origin denial on each JSON mutation route. `tests/security-headers.test.ts` checks the global header configuration. The Session 5 browser test exercises the full lifecycle and PDF download.
+
+After exact-version upgrades without `--force`, `npm audit --omit=dev` reports **0 vulnerabilities**. Full `npm audit` reports **3 moderate, 0 high, 0 critical** findings under Tailwind 3's build-time `postcss-selector-parser`/`postcss-nested` tree. The reported selector parsing CPU issue would require attacker-controlled CSS during a build; the app does not accept user CSS. A Tailwind 4 migration is needed to clear these remaining development findings. The critical Auth.js advisory present in the initial audit is cleared by `next-auth@5.0.0-beta.32`.
+
+The audit is based on source review, automated tests and dependency advisory data. It does not include an external penetration test or deployment configuration review.
+
+## Repository and history scan
+
+On 26 October 2026, a scan of all Git blobs reachable from local and fetched `main` refs found no PEM private keys, AWS access keys, GitHub or OpenAI token patterns, or JWTs. No `.env` file, database file, private key file or PDF is tracked in those refs; `.env.example` is tracked by design. The seeded application users use `example.test` addresses and synthetic names and reports.
+
+The scan did find public contributor email addresses in the bundled DejaVu font license, and existing `main` commits have personal author email metadata. Those are real personal identifiers in repository history, so a literal claim that the repository and history contain no personal data would be false. License attribution must be retained; removing past commit metadata would require a coordinated history rewrite outside this pull request. This branch uses a GitHub no-reply identity for its final commits.
