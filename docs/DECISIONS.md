@@ -44,3 +44,10 @@
 4. **Reporting help.** The help page lives inside the signed-in app layout and is linked from navigation and the new-bug form so guidance is available where a tester writes a report. It contains no project data.
 5. **Cleanup and CI.** Remove the Session 1 PDF spike and the redundant scaffold browser test. CI now runs the full lifecycle Playwright test after its normal checks, with an ephemeral Auth.js secret. Next.js 16 generated an agent guidance block in `AGENTS.md`; it is kept to avoid a recurring uncommitted change during development.
 6. **Cross-platform SQLite path.** Resolve relative `file:` paths against the repository root in one helper and pass its absolute URL to Prisma CLI, seed and app. This prevents the CLI's schema-relative interpretation from opening a different database. Invoke the Prisma generator through Node's JS entry point because Node 24 on Windows can reject direct `spawnSync` of `prisma.cmd` with `EINVAL`.
+
+## Session 6
+
+1. **Presentation scope.** Reuse Tailwind 3, existing Recharts and PDFKit, and the system font stack. CSS variables in `src/app/globals.css` hold color and spacing tokens; device color preference controls the optional dark palette. No package, schema, authorization, API, or lifecycle changes are needed.
+2. **Dashboard display metrics.** The new stat cards and 30-day trend derive from the same already-authorized dashboard rows and existing statistics. The original chart links and filter query parameters remain in place.
+3. **Demo seed expectation.** The requested richer demo increases the deterministic seed from 25 to 40 bugs per project, so the only changed test expectation is the seed count and sequential range in `tests/seed-plan.test.ts`. The test also checks Strong, Acceptable and Incomplete reports, all note types, and the 90-day window. Existing UI labels and lifecycle Playwright selectors stay stable.
+4. **PDF styling.** A branded header and colored severity/status text are drawn around the same report sections and content order.
