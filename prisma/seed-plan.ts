@@ -50,6 +50,21 @@ const titles = [
   "Access denied message reveals a project title",
   "Report table overlaps a long device name",
   "Repeated requests create duplicate list entries",
+  "Notification banner hides an important validation error",
+  "Saving a draft resets the selected severity",
+  "Project member search displays stale names",
+  "Audit timeline omits the latest status change",
+  "Mobile filters overflow the report list",
+  "Exported charts miss the newest reporting day",
+  "Keyboard shortcut opens the wrong project",
+  "Device details disappear after editing a report",
+  "Slow query blocks the activity timeline",
+  "Invite confirmation appears before membership is saved",
+  "Dashboard tooltip shows an incorrect area count",
+  "Verification result remains cached after a reopen",
+  "Report preview wraps a long browser name badly",
+  "Assignee picker loses selection after sorting",
+  "Archived project notice is hard to find",
 ] as const;
 
 export type SeedStatus = "Submitted" | "Investigating" | "Fixed" | "Verified";
@@ -97,11 +112,11 @@ export type SeedBug = {
 export function buildSeedBugs(now = new Date()): SeedBug[] {
   const bugs: SeedBug[] = [];
   for (const [projectIndex, project] of seedProjects.entries()) {
-    for (let number = 1; number <= 25; number++) {
+    for (let number = 1; number <= 40; number++) {
       const reporterId = `seed-user-tester-${((number - 1) % 3) + 1}`;
       const developerId = `seed-user-developer-${((number - 1) % 3) + 1}`;
       const createdAt = new Date(
-        now.getTime() - (number * 3 + projectIndex * 2 + 3) * 86_400_000,
+        now.getTime() - (number * 2 + projectIndex * 2 + 2) * 86_400_000,
       );
       const statusChanges: SeedChange[] = [];
       const targetIndex = (number - 1) % 4;
@@ -131,7 +146,7 @@ export function buildSeedBugs(now = new Date()): SeedBug[] {
         addChange("Fixed", developerId, "Fix ready for tester verification.");
       if (targetIndex >= 3)
         addChange("Verified", reporterId, "Original steps now pass.");
-      if (number === 15) {
+      if (number === 15 || number === 31) {
         addChange(
           "Investigating",
           reporterId,
@@ -139,7 +154,7 @@ export function buildSeedBugs(now = new Date()): SeedBug[] {
         );
         addChange("Fixed", developerId, "Updated the fix after retesting.");
       }
-      if (number === 12) {
+      if (number === 12 || number === 36) {
         for (let cycle = 0; cycle < 2; cycle++) {
           addChange(
             "Investigating",
@@ -159,6 +174,15 @@ export function buildSeedBugs(now = new Date()): SeedBug[] {
       const title = titles[number - 1];
       const areaIndex = (number - 1) % seedAreas.length;
       const isSparse = number % 7 === 0;
+      const isAcceptable = !isSparse && number % 9 === 0;
+      const noteTypes = [
+        "Observation",
+        "Hypothesis",
+        "Ruled out",
+        "Root cause",
+        "Workaround",
+        "Question",
+      ];
       bugs.push({
         id: `seed-bug-${project.key.toLowerCase()}-${number}`,
         projectId: project.id,
@@ -179,7 +203,8 @@ export function buildSeedBugs(now = new Date()): SeedBug[] {
         osName: number % 2 ? "Windows" : "macOS",
         osVersion: number % 2 ? "11" : "14",
         browserOrDevice: number % 2 ? "Chrome desktop" : "Safari desktop",
-        appVersion: isSparse ? null : `1.${projectIndex}.${number % 5}`,
+        appVersion:
+          isSparse || isAcceptable ? null : `1.${projectIndex}.${number % 5}`,
         envType: number % 3 === 0 ? "Staging" : "Production",
         expectedBehaviour: isSparse
           ? "It works"
@@ -240,8 +265,14 @@ export function buildSeedBugs(now = new Date()): SeedBug[] {
                 {
                   authorId: developerId,
                   type: "Observation",
-                  body: `Observed the reported ${seedAreas[areaIndex].toLowerCase()} behaviour in the demo environment.`,
+                  body: `Observed the reported ${seedAreas[areaIndex].toLowerCase()} behaviour in the fake demo environment.`,
                   createdAt: new Date(createdAt.getTime() + 5_400_000),
+                },
+                {
+                  authorId: developerId,
+                  type: noteTypes[number % noteTypes.length],
+                  body: `Fake investigation note: checking the ${seedAreas[areaIndex].toLowerCase()} flow against the reported steps.`,
+                  createdAt: new Date(createdAt.getTime() + 6_300_000),
                 },
                 ...(fixedAt
                   ? [
