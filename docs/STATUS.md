@@ -59,3 +59,12 @@
 - Personal-data finding: the history scan found no tracked secrets, `.env` or database files, and demo records are synthetic. It did find real contributor email addresses in the bundled font license and personal author emails in existing `main` commit metadata. This PR cannot remove that historical metadata; a literal no-personal-data claim is not met.
 - Known broken: none in the local checks above. Remote CI and deployment behavior are not yet verified.
 - Skipped: an external penetration test, large-scale load testing beyond 1,200 bugs, a working Postgres migration, and rewriting existing `main` history. The README documents the Postgres switch; implementation was outside Session 5.
+
+## Session 6
+
+- Done: responsive dark sidebar and light content shell, reusable cards, buttons, badges, avatars, tabs, empty states, headers, skeletons and completeness ring; shared CSS tokens, system font and optional device dark palette.
+- Done: dashboard summary cards and 30-day trend, refined Recharts styling, bug list and detail presentation, sectioned report form with sticky live completeness, richer project and login layouts, reporting help styling, branded PDF header and colored labels, favicon and page titles.
+- Done: deterministic fake seed expanded to 80 reports across both projects, spanning the last 90 days with varied severity, status, area, completeness and note types. Existing demo accounts remain.
+- Checks: lint, type-check, 108 unit/integration tests, production build, the full Playwright lifecycle and PDF download test, format check, and `npm audit --omit=dev` (0 vulnerabilities) passed locally. Fresh migration and seed succeeded, and a second seed run kept 9 accounts and 80 bugs without duplicates.
+- Partial: none within the requested Session 6 scope. Remote CI is pending the pull request.
+- Known broken: none in the local checks above.
