@@ -2,13 +2,61 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+  --space: 8px;
+  --canvas: #f5f6fb;
+  --surface: #fff;
+  --surface-soft: #f8f8fc;
+  --ink: #18213b;
+  --muted: #59647b;
+  --line: #e2e6f0;
+  --accent: #5338c9;
+  --accent-dark: #38238f;
+  --accent-soft: #eeeafb;
+  --shadow:
+    0 12px 35px rgba(35, 31, 80, 0.07), 0 2px 7px rgba(35, 31, 80, 0.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --canvas: #101426;
+    --surface: #1b2137;
+    --surface-soft: #242b44;
+    --ink: #f3f4ff;
+    --muted: #bcc5d8;
+    --line: #37405a;
+    --accent: #a896ff;
+    --accent-dark: #cabfff;
+    --accent-soft: #343054;
+    --shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
+  }
+}
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  @apply antialiased;
+}
+h1 {
+  @apply tracking-tight;
+}
+a {
+  text-underline-offset: 3px;
 }
 input,
 textarea,
 select {
-  @apply rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  @apply rounded-xl px-3 py-2.5 shadow-sm;
 }
 input:focus,
 textarea:focus,
@@ -16,19 +64,29 @@ select:focus,
 button:focus-visible,
 a:focus-visible,
 summary:focus-visible {
-  @apply outline outline-2 outline-offset-2 outline-blue-600;
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
 }
 label {
-  @apply block text-sm font-medium;
+  @apply block text-sm font-semibold;
 }
 .card {
-  @apply rounded-lg border border-slate-200 bg-white p-6 shadow-sm;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  @apply rounded-2xl p-6;
 }
 .button {
-  @apply inline-flex items-center justify-center rounded-md bg-blue-700 px-4 py-2 font-medium text-white hover:bg-blue-800 disabled:opacity-60;
+  background: linear-gradient(135deg, #4b35bd, #724ade);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(84, 57, 199, 0.25);
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-60;
 }
 .button-secondary {
-  @apply inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 font-medium hover:bg-slate-100;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors;
 }
 .field {
   @apply space-y-1;
@@ -37,4 +95,169 @@ label {
 .field textarea,
 .field select {
   @apply w-full;
+}
+.button:hover {
+  background: linear-gradient(135deg, #3b269f, #5e37ca);
+}
+.button-secondary:hover,
+.button-ghost:hover {
+  background: var(--accent-soft);
+}
+.button-ghost {
+  color: var(--accent);
+  @apply inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors;
+}
+.page-hero {
+  background:
+    radial-gradient(
+      circle at 90% 0%,
+      rgba(170, 151, 255, 0.32),
+      transparent 37%
+    ),
+    linear-gradient(115deg, #25215e, #4d37ae 65%, #7550d8);
+  color: #fff;
+  @apply rounded-3xl p-8 shadow-xl;
+}
+.page-hero p {
+  color: #ded9ff;
+}
+.section-title {
+  @apply text-lg font-bold tracking-tight;
+}
+.muted {
+  color: var(--muted);
+}
+.accent-text {
+  color: var(--accent);
+}
+.surface-soft {
+  background: var(--surface-soft);
+}
+.thin-divider {
+  border-color: var(--line);
+}
+.page-header {
+  @apply flex flex-wrap items-center justify-between gap-4;
+}
+.eyebrow {
+  color: var(--accent);
+  @apply mb-2 text-xs font-bold uppercase tracking-[.18em];
+}
+.badge {
+  @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold;
+  background: var(--surface-soft);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.badge-critical {
+  background: #fee9e9;
+  color: #9d1f2d;
+  border-color: #facbce;
+}
+.badge-high {
+  background: #fff0e0;
+  color: #a34811;
+  border-color: #ffd5a6;
+}
+.badge-medium,
+.badge-fixed,
+.badge-incomplete {
+  background: #fff4d7;
+  color: #835700;
+  border-color: #f5d994;
+}
+.badge-low,
+.badge-submitted {
+  background: #e9eef5;
+  color: #415168;
+  border-color: #cfdae7;
+}
+.badge-investigating {
+  background: #e2efff;
+  color: #2052a0;
+  border-color: #bad8ff;
+}
+.badge-verified,
+.badge-strong {
+  background: #dbf5e8;
+  color: #176342;
+  border-color: #aee5c8;
+}
+.badge-acceptable,
+.badge-recurring {
+  background: #efe9ff;
+  color: #5731a0;
+  border-color: #d7c9fc;
+}
+.avatar {
+  background: linear-gradient(135deg, #e9e3ff, #c9baff);
+  color: #35227d;
+  @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ring-2 ring-white;
+}
+.avatar-sm {
+  @apply h-7 w-7 text-[10px];
+}
+.tabs {
+  border-color: var(--line);
+  @apply flex flex-wrap gap-1 border-b;
+}
+.tab {
+  color: var(--muted);
+  @apply rounded-t-lg px-4 py-3 text-sm font-semibold transition-colors;
+}
+.tab:hover,
+.tab.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.tab.active {
+  box-shadow: inset 0 -3px var(--accent);
+}
+.empty-state {
+  @apply flex min-h-64 flex-col items-center justify-center gap-3 text-center;
+}
+.empty-icon {
+  background: var(--accent-soft);
+  color: var(--accent);
+  @apply flex h-14 w-14 items-center justify-center rounded-2xl;
+}
+.completeness {
+  @apply inline-flex items-center gap-2 text-xs;
+}
+.completeness small {
+  color: var(--muted);
+  @apply block;
+}
+.score-ring {
+  @apply flex h-10 w-10 items-center justify-center rounded-full;
+}
+.score-ring span {
+  background: var(--surface);
+  color: var(--ink);
+  @apply flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold;
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-soft),
+    var(--line),
+    var(--surface-soft)
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  @apply rounded-xl;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

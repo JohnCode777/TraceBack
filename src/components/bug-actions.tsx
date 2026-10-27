@@ -75,7 +75,7 @@ export function BugActions({
             ? ["Investigating"]
             : [];
   return (
-    <section className="mt-8 grid gap-8 md:grid-cols-2">
+    <section className="grid gap-5 md:grid-cols-2">
       {canDev && (
         <form
           onSubmit={async (e) => {
@@ -85,7 +85,7 @@ export function BugActions({
                 String(new FormData(e.currentTarget).get("assigneeId")) || null,
             });
           }}
-          className="grid gap-2"
+          className="card grid gap-3"
         >
           <h2 className="text-xl font-semibold">Assign developer</h2>
           <label>
@@ -103,13 +103,11 @@ export function BugActions({
               ))}
             </select>
           </label>
-          <button className="w-fit rounded bg-slate-900 p-2 text-white">
-            Assign
-          </button>
+          <button className="button w-fit">Assign</button>
         </form>
       )}
       {moves.length > 0 && (
-        <form onSubmit={transition} className="grid gap-2">
+        <form onSubmit={transition} className="card grid gap-3">
           <h2 className="text-xl font-semibold">Change status</h2>
           <label>
             Move to
@@ -172,12 +170,10 @@ export function BugActions({
               </label>
             </>
           )}
-          <button className="w-fit rounded bg-slate-900 p-2 text-white">
-            Update status
-          </button>
+          <button className="button w-fit">Update status</button>
         </form>
       )}
-      <form onSubmit={note} className="grid gap-2">
+      <form onSubmit={note} className="card grid gap-3">
         <h2 className="text-xl font-semibold">Add note</h2>
         <label>
           Type
@@ -198,9 +194,7 @@ export function BugActions({
           Note
           <textarea name="body" className="block w-full border p-2" required />
         </label>
-        <button className="w-fit rounded bg-slate-900 p-2 text-white">
-          Add note
-        </button>
+        <button className="button w-fit">Add note</button>
       </form>
       {error && (
         <p role="alert" className="text-red-700">

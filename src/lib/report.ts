@@ -57,12 +57,14 @@ export async function generateReport(report: ReportData): Promise<Buffer> {
     .registerFont("bold", bold)
     .font("body")
     .fontSize(10);
-  const line = (label: string, content?: string | null) => {
+  const line = (label: string, content?: string | null, tone?: string) => {
     doc
       .font("bold")
       .text(`${label}: `, { continued: true })
       .font("body")
+      .fillColor(tone ?? "#27314c")
       .text(value(content));
+    doc.fillColor("#27314c");
     doc.moveDown(0.3);
   };
   const section = (heading: string) => {
@@ -71,20 +73,52 @@ export async function generateReport(report: ReportData): Promise<Buffer> {
       .moveDown(0.8)
       .font("bold")
       .fontSize(13)
+      .fillColor("#4530a0")
       .text(heading)
       .moveDown(0.4)
       .font("body")
-      .fontSize(10);
+      .fontSize(10)
+      .fillColor("#27314c");
   };
+  doc.rect(0, 0, 595, 35).fill("#282264");
+  doc
+    .font("bold")
+    .fontSize(10)
+    .fillColor("#ffffff")
+    .text("TRACEBACK  /  INVESTIGATION REPORT", 48, 12, { lineBreak: false });
   doc
     .font("bold")
     .fontSize(18)
+    .fillColor("#25215e")
     .text(`${report.bugId}: ${report.title}`)
     .fontSize(10)
+    .fillColor("#27314c")
     .moveDown(0.5);
   line("Project", report.projectName);
-  line("Severity", report.severity);
-  line("Status", report.status);
+  line(
+    "Severity",
+    report.severity,
+    (
+      {
+        Critical: "#a52035",
+        High: "#a34811",
+        Medium: "#835700",
+        Low: "#415168",
+      } as Record<string, string>
+    )[report.severity ?? ""],
+  );
+  line(
+    "Status",
+    report.status,
+    (
+      {
+        Submitted: "#59677e",
+        Investigating: "#245aa4",
+        Fixed: "#7243a4",
+        Verified: "#16734c",
+      } as Record<string, string>
+    )[report.status],
+  );
   line("Reporter", report.reporterName);
   line("Created", when(report.createdAt));
 

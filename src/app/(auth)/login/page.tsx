@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { ActionForm } from "@/components/action-form";
 import { loginAction } from "@/app/actions";
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Sign in" };
 export default async function LoginPage({
   searchParams,
 }: {
@@ -11,8 +13,14 @@ export default async function LoginPage({
   if (await auth()) redirect("/projects");
   const params = await searchParams;
   return (
-    <section className="card space-y-5">
-      <h2 className="text-xl font-semibold">Sign in</h2>
+    <section className="card space-y-6 !p-8">
+      <div>
+        <p className="eyebrow">Welcome back</p>
+        <h2 className="text-3xl font-bold">Sign in</h2>
+        <p className="muted mt-2 text-sm">
+          Continue to your projects and reports.
+        </p>
+      </div>
       {params.registered && (
         <p className="text-green-700">Account created. Sign in to continue.</p>
       )}
@@ -40,7 +48,7 @@ export default async function LoginPage({
       </ActionForm>
       <p className="text-sm">
         New here?{" "}
-        <Link className="text-blue-700 underline" href="/register">
+        <Link className="accent-text font-semibold underline" href="/register">
           Create an account
         </Link>
       </p>
