@@ -2,7 +2,7 @@ import { AppError } from "./errors";
 
 export type Replay = {
   steps: { stepId: string; result: "Pass" | "Fail"; comment?: string }[];
-  problemOccurs: "Yes" | "No";
+  problemOccurs?: "Yes" | "No";
   finalComment?: string;
 };
 
@@ -14,7 +14,7 @@ export function suggestReopenReason(
       result: "Pass" | "Fail" | "";
       comment?: string;
     }[];
-    problemOccurs: "Yes" | "No" | "";
+    problemOccurs?: "Yes" | "No" | "";
     finalComment?: string;
   },
 ) {
@@ -53,6 +53,8 @@ export function evaluateReplay(
   outcome: "verified" | "reopened",
 ) {
   if (!replay) throw new AppError("Complete the verification checklist", 400);
+  if (!replay.problemOccurs)
+    throw new AppError("Answer whether the original problem still occurs", 400);
   const ordered = [...steps].sort((a, b) => a.position - b.position);
   const submitted = new Map(replay.steps.map((step) => [step.stepId, step]));
   if (
@@ -79,6 +81,7 @@ export function evaluateReplay(
     );
   const reason = suggestReopenReason(ordered, replay);
   return {
+    problemOccurs: replay.problemOccurs,
     reason,
     summary: summarizeAttempt({
       outcome,

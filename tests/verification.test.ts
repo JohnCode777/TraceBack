@@ -24,6 +24,9 @@ describe("verification replay rules", () => {
       /Complete/,
     );
     expect(() =>
+      evaluateReplay(steps, { steps: pass.steps }, "verified"),
+    ).toThrow(/Answer whether/);
+    expect(() =>
       evaluateReplay(
         steps,
         { ...pass, steps: pass.steps.slice(0, 1) },

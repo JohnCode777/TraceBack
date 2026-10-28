@@ -79,20 +79,19 @@ export function VerificationChecklist({
 
   return (
     <div className="mt-3">
-      <button
-        type="button"
-        className="rounded bg-slate-900 px-4 py-2 text-white"
-        onClick={() => setOpen(!open)}
-      >
+      <button type="button" className="button" onClick={() => setOpen(!open)}>
         {open ? "Hide checklist" : "Verify"}
       </button>
       {open && (
         <div className="mt-4 grid gap-4">
-          <p aria-live="polite">
+          <p className="muted text-sm font-semibold" aria-live="polite">
             {checked} of {steps.length} steps checked
           </p>
           {steps.map((step, index) => (
-            <fieldset key={step.id} className="rounded border p-3">
+            <fieldset
+              key={step.id}
+              className="surface-soft rounded-xl border thin-divider p-4"
+            >
               <legend className="font-semibold">
                 Step {step.position}: {step.instruction}
               </legend>
@@ -118,7 +117,7 @@ export function VerificationChecklist({
               <label className="mt-2 block">
                 Comment (optional)
                 <textarea
-                  className="block w-full border p-2"
+                  className="mt-1 block w-full rounded-xl border thin-divider p-2"
                   value={marks[index].comment}
                   onChange={(event) =>
                     setMarks(
@@ -133,7 +132,7 @@ export function VerificationChecklist({
               </label>
             </fieldset>
           ))}
-          <fieldset className="rounded border p-3">
+          <fieldset className="surface-soft rounded-xl border thin-divider p-4">
             <legend className="font-semibold">
               Does the original problem still occur?
             </legend>
@@ -153,7 +152,7 @@ export function VerificationChecklist({
             <label className="mt-2 block">
               Comment (optional)
               <textarea
-                className="block w-full border p-2"
+                className="mt-1 block w-full rounded-xl border thin-divider p-2"
                 value={finalComment}
                 onChange={(event) => setFinalComment(event.target.value)}
               />
@@ -163,7 +162,7 @@ export function VerificationChecklist({
             <label>
               Reopen reason
               <textarea
-                className="block w-full border p-2"
+                className="mt-1 block w-full rounded-xl border thin-divider p-2"
                 value={reasonEdit ?? suggestion}
                 onChange={(event) => setReasonEdit(event.target.value)}
                 required
@@ -174,7 +173,7 @@ export function VerificationChecklist({
             {complete && !failed && (
               <button
                 type="button"
-                className="rounded bg-slate-900 px-4 py-2 text-white"
+                className="button"
                 onClick={() => submit("Verified")}
               >
                 Save verification
@@ -183,7 +182,7 @@ export function VerificationChecklist({
             {complete && failed && (
               <button
                 type="button"
-                className="rounded bg-slate-900 px-4 py-2 text-white"
+                className="button"
                 onClick={() => submit("Investigating")}
               >
                 Reopen

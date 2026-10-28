@@ -389,7 +389,7 @@ export async function transitionBug(
           bugId,
           verifierId: actor.id,
           createdAt: now,
-          problemOccurs: input.verification!.problemOccurs,
+          problemOccurs: replay.problemOccurs,
           finalComment: input.verification!.finalComment?.trim() || null,
           outcome: input.to === "Verified" ? "verified" : "reopened",
           steps: { create: replay.results },

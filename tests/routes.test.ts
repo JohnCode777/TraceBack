@@ -284,6 +284,15 @@ describe("authenticated bug routes", () => {
       ).status,
     ).toBe(403);
     activeUser = "tester";
+    const unanswered = await transitionPost(
+      request("POST", `/${fixed.id}/transition`, {
+        ...replay,
+        verification: { steps: replay.verification.steps },
+      }),
+      verifyCtx,
+    );
+    expect(unanswered.status).toBe(400);
+    expect((await unanswered.json()).error).toMatch(/Answer whether/);
     expect(
       (
         await transitionPost(

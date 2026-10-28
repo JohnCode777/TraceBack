@@ -100,3 +100,13 @@
 - Checks: lint, type-check, 127 unit/integration tests, production build, formatting, fresh migration and seed, and both Playwright flows passed locally.
 - Partial: none within this follow-up.
 - Known broken: none found in local checks.
+
+## Session 7
+
+- Done: confirmed current `main` includes Sessions 1–6 and rebased Session 7 onto the Session 6 follow-ups.
+- Done: ordered Fixed-state verification checklist with Pass/Fail marks, optional comments, required original-problem answer, progress, suggested editable Reopen reason, and server-enforced outcomes through the existing transition function.
+- Done: immutable SQLite verification attempts and step snapshots for every accepted Fixed → Verified or Fixed → Investigating transition, with read-only bug detail history, timeline summaries, all-attempt PDF output, and a legacy “No checklist recorded” fallback.
+- Done: insert-only checklist examples for selected seeded Verified and reopened bugs; existing nine demo accounts remain. Archived projects with verification records are protected from permanent deletion to keep those records immutable.
+- Checks: fresh migration and seed produced 9 users, 80 bugs and 10 checklist attempts; a second seed run stayed idempotent. Lint, type-check, 135 unit/integration tests, formatting, production build and both Playwright flows passed locally. PDF text extraction confirmed multiple attempts, failed-step comments and the legacy fallback. Build and Playwright used the managed environment's approved process access and system Chromium.
+- Partial: remote CI is pending the pull request. No setup or script changes were needed, so README setup instructions remain current.
+- Known broken: none found in the local checks above.

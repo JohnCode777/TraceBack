@@ -68,7 +68,7 @@ export const transitionSchema = z.object({
           }),
         )
         .max(50),
-      problemOccurs: z.enum(["Yes", "No"]),
+      problemOccurs: z.enum(["Yes", "No"]).optional(),
       finalComment: z.string().trim().max(10000).optional(),
     })
     .optional(),
