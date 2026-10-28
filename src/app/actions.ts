@@ -4,15 +4,17 @@ import { AuthError } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { auth, signIn, signOut } from "@/auth";
 import {
+  addProjectArea,
   addProjectMember,
   archiveProject,
   createProject,
   editProject,
   ProjectError,
+  removeProjectArea,
 } from "@/lib/projects";
 import { registerUser, UserError } from "@/lib/users";
 import { ZodError } from "zod";
-import { loginSchema, projectIdSchema } from "@/lib/validators";
+import { areaIdSchema, loginSchema, projectIdSchema } from "@/lib/validators";
 
 export type FormState = { error: string };
 const stateError = (error: unknown): FormState => ({
@@ -127,6 +129,40 @@ export async function addMemberAction(
     return stateError(error);
   }
   redirect(`/projects/${projectId}/settings?memberAdded=1`);
+}
+
+export async function addAreaAction(
+  projectId: string,
+  _state: FormState,
+  form: FormData,
+): Promise<FormState> {
+  const id = await userId();
+  try {
+    projectId = projectIdSchema.parse(projectId);
+    await addProjectArea(id, projectId, { name: value(form, "name") });
+  } catch (error) {
+    if (error instanceof ProjectError && error.status === 404) notFound();
+    return stateError(error);
+  }
+  redirect(`/projects/${projectId}/settings?areaAdded=1`);
+}
+
+export async function removeAreaAction(
+  projectId: string,
+  areaId: string,
+  _state: FormState,
+  _form: FormData,
+): Promise<FormState> {
+  const id = await userId();
+  try {
+    projectId = projectIdSchema.parse(projectId);
+    areaId = areaIdSchema.parse(areaId);
+    await removeProjectArea(id, projectId, areaId);
+  } catch (error) {
+    if (error instanceof ProjectError && error.status === 404) notFound();
+    return stateError(error);
+  }
+  redirect(`/projects/${projectId}/settings?areaRemoved=1`);
 }
 
 export async function archiveProjectAction(

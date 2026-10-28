@@ -30,3 +30,7 @@ export const addMemberSchema = z.object({
 });
 
 export const projectIdSchema = z.string().min(1).max(100);
+export const areaIdSchema = z.string().min(1).max(100);
+export const createAreaSchema = z.object({
+  name: z.string().trim().min(1, "Enter an area name.").max(100),
+});

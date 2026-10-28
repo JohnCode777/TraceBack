@@ -3,6 +3,8 @@ import { db } from "./db";
 import { can, type Action } from "./policy";
 import {
   addMemberSchema,
+  areaIdSchema,
+  createAreaSchema,
   createProjectSchema,
   editProjectSchema,
   roleSchema,
@@ -16,6 +18,13 @@ export class ProjectError extends Error {
     super(message);
   }
 }
+
+export const defaultAreaNames = [
+  "General",
+  "Setup",
+  "Authentication",
+  "Testing",
+] as const;
 
 export async function listProjects(userId: string) {
   return db.project.findMany({
@@ -61,7 +70,11 @@ export async function createProject(userId: string, input: unknown) {
   const data = createProjectSchema.parse(input);
   try {
     return await db.project.create({
-      data: { ...data, members: { create: { userId, role: "Admin" } } },
+      data: {
+        ...data,
+        members: { create: { userId, role: "Admin" } },
+        areas: { create: defaultAreaNames.map((name) => ({ name })) },
+      },
     });
   } catch (error) {
     if (
@@ -69,6 +82,53 @@ export async function createProject(userId: string, input: unknown) {
       error.code === "P2002"
     )
       throw new ProjectError("Project key is already in use.", 409);
+    throw error;
+  }
+}
+
+export async function addProjectArea(
+  userId: string,
+  projectId: string,
+  input: unknown,
+) {
+  const { name } = createAreaSchema.parse(input);
+  await requireProjectAction(userId, projectId, "manageProject");
+  try {
+    return await db.area.create({ data: { projectId, name } });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    )
+      throw new ProjectError("Area already exists in this project.", 409);
+    throw error;
+  }
+}
+
+export async function removeProjectArea(
+  userId: string,
+  projectId: string,
+  areaId: unknown,
+) {
+  const validAreaId = areaIdSchema.parse(areaId);
+  await requireProjectAction(userId, projectId, "manageProject");
+  const area = await db.area.findFirst({
+    where: { id: validAreaId, projectId },
+  });
+  if (!area) throw new ProjectError("Area not found.", 404);
+  if (await db.bug.count({ where: { projectId, areaId: validAreaId } }))
+    throw new ProjectError("Area is used by bugs and cannot be removed.", 409);
+  try {
+    return await db.area.delete({ where: { id: area.id } });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2003"
+    )
+      throw new ProjectError(
+        "Area is used by bugs and cannot be removed.",
+        409,
+      );
     throw error;
   }
 }
