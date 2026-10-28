@@ -51,3 +51,10 @@
 2. **Dashboard display metrics.** The new stat cards and 30-day trend derive from the same already-authorized dashboard rows and existing statistics. The original chart links and filter query parameters remain in place.
 3. **Demo seed expectation.** The requested richer demo increases the deterministic seed from 25 to 40 bugs per project, so the only changed test expectation is the seed count and sequential range in `tests/seed-plan.test.ts`. The test also checks Strong, Acceptable and Incomplete reports, all note types, and the 90-day window. Existing UI labels and lifecycle Playwright selectors stay stable.
 4. **PDF styling.** A branded header and colored severity/status text are drawn around the same report sections and content order.
+
+## Session 6 area follow-up
+
+1. **Default areas.** Project creation now creates General, Setup, Authentication and Testing in the same database operation as the project and Admin membership. Existing projects keep their areas; Admins can add missing ones in settings. The existing `(projectId, name)` unique constraint enforces names within a project.
+2. **Removing areas in use.** An area referenced by any bug cannot be removed. Settings shows its bug count and hides the remove action, while the server returns a conflict for direct attempts. This preserves the bug's area and follows the existing restrictive foreign key without changing the schema or reports.
+3. **Test fixture cleanup.** Session 2's test setup now deletes areas before projects, because newly created projects own default areas. Added service tests for defaults, unique names, project isolation, roles, archived projects and referenced-area protection; added a Playwright flow for settings, the bug form and dashboard.
+4. **Browser test database.** Playwright runs one worker against its shared local SQLite database. The new project flow and existing lifecycle flow were competing for the single writer and delayed dev-server redirects when run together. The new flow waits for its destination headings with a longer timeout; all assertions remain in place.

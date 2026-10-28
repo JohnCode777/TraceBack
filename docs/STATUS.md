@@ -68,3 +68,11 @@
 - Checks: lint, type-check, 108 unit/integration tests, production build, the full Playwright lifecycle and PDF download test, format check, and `npm audit --omit=dev` (0 vulnerabilities) passed locally. Fresh migration and seed succeeded, and a second seed run kept 9 accounts and 80 bugs without duplicates.
 - Partial: none within the requested Session 6 scope. Remote CI is pending the pull request.
 - Known broken: none in the local checks above.
+
+## Session 6 area follow-up
+
+- Done: new projects receive four default areas; Admins can add unique area names and remove unused areas in Project settings. Areas assigned to bugs remain protected.
+- Done: service permission and data tests plus a Playwright flow covering project creation, area management, area selection on a new bug and the dashboard area chart.
+- Checks: lint, type-check, 111 unit/integration tests, production build, formatting, and both Playwright flows passed locally. Fresh migration and seed also passed.
+- Partial: none in this follow-up. Remote CI is pending the updated pull request.
+- Known broken: none found in local checks.
