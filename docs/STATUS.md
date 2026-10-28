@@ -84,3 +84,11 @@
 - Checks: lint, type-check, 121 unit/integration tests, production build, format check and both Playwright flows passed locally. The new migration applied successfully.
 - Partial: none within this follow-up. Remote CI is pending the updated pull request.
 - Known broken: none found in local checks.
+
+## Session 6 activity timeline follow-up
+
+- Done: edit audit entries render as distinct Edit activity with readable field labels, assignee names and area names. Historical no-op entries are hidden; stored note bodies and permissions are unchanged.
+- Done: unchanged assignments no longer append audit notes; unchanged report edits remain no-ops. Parser, formatter, service and browser assertions cover the behavior.
+- Checks: lint, type-check, 125 unit/integration tests, production build, formatting and both Playwright flows passed locally.
+- Partial: none within this follow-up.
+- Known broken: none found in local checks.
