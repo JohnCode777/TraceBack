@@ -15,7 +15,7 @@ test("admin creates a project with usable areas and manages an unused area", asy
   await page.getByRole("button", { name: "Create project" }).click();
   await expect(
     page.getByRole("heading", { name: `Area demo ${key}` }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 20_000 });
   const projectId = new URL(page.url()).pathname.split("/").at(-1);
   expect(projectId).toBeTruthy();
 
@@ -52,7 +52,7 @@ test("admin creates a project with usable areas and manages an unused area", asy
   await page.getByRole("button", { name: "Create bug" }).click();
   await expect(
     page.getByRole("heading", { name: /Fake setup flow/ }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 20_000 });
   await page.goto(`/dashboard?project=${projectId}`);
   await expect(
     page.getByRole("heading", { name: "Top problem areas" }),

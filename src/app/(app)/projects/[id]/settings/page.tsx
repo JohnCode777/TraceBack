@@ -129,10 +129,10 @@ export default async function SettingsPage({
                     </div>
                     {area._count.bugs === 0 ? (
                       <ActionForm
-                        action={removeAreaAction.bind(null, id, area.id)}
+                        action={removeAreaAction.bind(null, id)}
                         submit={`Remove ${area.name}`}
                       >
-                        {null}
+                        <input type="hidden" name="areaId" value={area.id} />
                       </ActionForm>
                     ) : (
                       <span className="muted text-xs">

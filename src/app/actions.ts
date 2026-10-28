@@ -149,14 +149,13 @@ export async function addAreaAction(
 
 export async function removeAreaAction(
   projectId: string,
-  areaId: string,
   _state: FormState,
-  _form: FormData,
+  form: FormData,
 ): Promise<FormState> {
   const id = await userId();
   try {
     projectId = projectIdSchema.parse(projectId);
-    areaId = areaIdSchema.parse(areaId);
+    const areaId = areaIdSchema.parse(value(form, "areaId"));
     await removeProjectArea(id, projectId, areaId);
   } catch (error) {
     if (error instanceof ProjectError && error.status === 404) notFound();
