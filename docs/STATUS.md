@@ -76,3 +76,11 @@
 - Checks: lint, type-check, 111 unit/integration tests, production build, formatting, and both Playwright flows passed locally. Fresh migration and seed also passed.
 - Partial: none in this follow-up. Remote CI is pending the updated pull request.
 - Known broken: none found in local checks.
+
+## Session 6 permanent deletion follow-up
+
+- Done: archived project deletion for Admins with exact project-key confirmation and the existing JSON mutation origin checks. The service removes project children in one transaction, including status history, while preserving user accounts.
+- Done: central `deleteProject` policy permission, migration for the narrow status-history trigger exception, updated specification and decision record, route and migration tests, and browser coverage of the confirmation flow.
+- Checks: lint, type-check, 121 unit/integration tests, production build, format check and both Playwright flows passed locally. The new migration applied successfully.
+- Partial: none within this follow-up. Remote CI is pending the updated pull request.
+- Known broken: none found in local checks.
