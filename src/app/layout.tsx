@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TraceBack",
+  title: { default: "TraceBack", template: "%s · TraceBack" },
   description: "Bug reproduction and investigation",
 };
 

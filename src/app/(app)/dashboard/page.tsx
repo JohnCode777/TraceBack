@@ -8,6 +8,9 @@ import { can } from "@/lib/policy";
 import { roleSchema } from "@/lib/validators";
 import { calculateStats } from "@/lib/stats";
 import { DashboardCharts } from "./charts";
+import { Badge, Card, EmptyState, Icon, PageHeader } from "@/components/ui";
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Dashboard" };
 
 export const dynamic = "force-dynamic";
 const filtersSchema = z.object({
@@ -66,25 +69,98 @@ export default async function Dashboard({
   const base = new URLSearchParams();
   if (from) base.set("from", from);
   if (to) base.set("to", to);
+  const unresolved = stats.byStatus
+    .filter((item) => item.status !== "Verified")
+    .reduce((sum, item) => sum + item.count, 0);
+  const critical =
+    stats.unresolvedBySeverity.find((item) => item.severity === "Critical")
+      ?.count ?? 0;
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
+  const verifiedThisMonth = rows.filter(
+    (row) =>
+      row.status === "Verified" &&
+      row.verifiedAt &&
+      row.verifiedAt >= monthStart,
+  ).length;
+  const trend = Array.from({ length: 30 }, (_, index) => {
+    const date = new Date();
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCDate(date.getUTCDate() - (29 - index));
+    const next = new Date(date.getTime() + 86_400_000);
+    return {
+      day: date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      }),
+      count: rows.filter((row) => row.createdAt >= date && row.createdAt < next)
+        .length,
+    };
+  });
+  const statCards = [
+    {
+      label: "Total unresolved",
+      value: unresolved,
+      icon: "bug",
+      detail: "Needs attention",
+      href: selected ? `/projects/${selected}/bugs?unresolved=1` : "/projects",
+    },
+    {
+      label: "Critical open",
+      value: critical,
+      icon: "alert",
+      detail: "Highest priority",
+      href: selected
+        ? `/projects/${selected}/bugs?severity=Critical&unresolved=1`
+        : "/projects",
+    },
+    {
+      label: "Avg time to fix",
+      value:
+        stats.timeToFix.averageHours == null
+          ? "—"
+          : `${stats.timeToFix.averageHours.toFixed(1)}h`,
+      icon: "clock",
+      detail: `${stats.timeToFix.count} resolved bugs`,
+      href: selected ? `/projects/${selected}/bugs` : "/projects",
+    },
+    {
+      label: "Verified this month",
+      value: verifiedThisMonth,
+      icon: "check",
+      detail: "Confirmed fixes",
+      href: selected
+        ? `/projects/${selected}/bugs?status=Verified`
+        : "/projects",
+    },
+  ];
   return (
-    <main className="mx-auto max-w-6xl p-6 space-y-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+    <div className="space-y-6">
+      <div className="page-hero flex flex-wrap items-end justify-between gap-6">
+        <div>
+          <p className="mb-3 text-xs font-bold uppercase tracking-[.2em]">
+            TraceBack insights
+          </p>
+          <h1 className="text-3xl font-extrabold sm:text-4xl">Dashboard</h1>
+          <p className="mt-3 max-w-xl">
+            A clear view of what is open, what is recurring, and how quickly
+            your team is resolving issues.
+          </p>
+        </div>
         <Link
-          className="underline"
+          className="button-secondary"
           href={selected ? `/projects/${selected}/bugs` : "/projects"}
         >
-          Bug list
+          Bug list <Icon name="arrow" className="h-4 w-4" />
         </Link>
-      </header>
-      <form
-        className="flex flex-wrap items-end gap-3 rounded border p-4"
-        method="get"
-      >
+      </div>
+      <form className="card flex flex-wrap items-end gap-4" method="get">
         <label>
           Project{" "}
           <select
-            className="block border p-2"
+            className="mt-1 block"
             name="project"
             defaultValue={selected ?? ""}
           >
@@ -99,7 +175,7 @@ export default async function Dashboard({
         <label>
           From{" "}
           <input
-            className="block border p-2"
+            className="mt-1 block"
             name="from"
             type="date"
             defaultValue={from ?? ""}
@@ -108,41 +184,82 @@ export default async function Dashboard({
         <label>
           To{" "}
           <input
-            className="block border p-2"
+            className="mt-1 block"
             name="to"
             type="date"
             defaultValue={to ?? ""}
           />
         </label>
-        <button className="rounded bg-slate-900 px-4 py-2 text-white">
-          Apply
-        </button>
+        <button className="button">Apply</button>
       </form>
-      <p>{stats.total} bugs in the selected range.</p>
+      <PageHeader
+        eyebrow="Overview"
+        title="At a glance"
+        description={`${stats.total} bugs in the selected range.`}
+        action={<Badge tone="acceptable">Live project view</Badge>}
+      />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {statCards.map((card) => (
+          <Link
+            key={card.label}
+            href={card.href}
+            className="card group block transition-transform hover:-translate-y-1"
+          >
+            <span
+              className="mb-6 flex h-11 w-11 items-center justify-center rounded-xl"
+              style={{
+                background: "var(--accent-soft)",
+                color: "var(--accent)",
+              }}
+            >
+              <Icon name={card.icon} />
+            </span>
+            <p className="muted text-sm font-medium">{card.label}</p>
+            <p className="mt-1 text-3xl font-extrabold tracking-tight">
+              {card.value}
+            </p>
+            <p className="muted mt-2 text-xs">{card.detail}</p>
+          </Link>
+        ))}
+      </div>
       {!selected && (
-        <p role="status" className="rounded border bg-white p-4">
-          Create or join a project to see dashboard statistics.
-        </p>
+        <div role="status">
+          <EmptyState
+            title="Your dashboard starts with a project"
+            description="Create or join a project to see dashboard statistics."
+            action={{ label: "View projects", href: "/projects" }}
+          />
+        </div>
       )}
       {selected && (
         <DashboardCharts
           stats={stats}
+          trend={trend}
           query={base.toString()}
           projectId={selected}
         />
       )}
-      <section className="rounded border p-4">
-        <h2 className="text-xl font-semibold">Average time</h2>
-        <p>
-          Created to fixed: {stats.timeToFix.averageHours?.toFixed(1) ?? "—"}{" "}
-          hours ({stats.timeToFix.count} bugs)
-        </p>
-        <p>
-          Fixed to verified:{" "}
-          {stats.timeToVerify.averageHours?.toFixed(1) ?? "—"} hours (
-          {stats.timeToVerify.count} bugs)
-        </p>
-      </section>
-    </main>
+      <Card>
+        <h2 className="section-title">Resolution pace</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="surface-soft rounded-xl p-4">
+            <p className="muted text-sm">Created to fixed</p>
+            <p className="mt-1 text-2xl font-bold">
+              {stats.timeToFix.averageHours?.toFixed(1) ?? "—"}{" "}
+              <span className="text-sm font-normal">hours</span>
+            </p>
+            <p className="muted text-xs">{stats.timeToFix.count} bugs</p>
+          </div>
+          <div className="surface-soft rounded-xl p-4">
+            <p className="muted text-sm">Fixed to verified</p>
+            <p className="mt-1 text-2xl font-bold">
+              {stats.timeToVerify.averageHours?.toFixed(1) ?? "—"}{" "}
+              <span className="text-sm font-normal">hours</span>
+            </p>
+            <p className="muted text-xs">{stats.timeToVerify.count} bugs</p>
+          </div>
+        </div>
+      </Card>
+    </div>
   );
 }

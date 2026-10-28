@@ -44,3 +44,33 @@
 4. **Reporting help.** The help page lives inside the signed-in app layout and is linked from navigation and the new-bug form so guidance is available where a tester writes a report. It contains no project data.
 5. **Cleanup and CI.** Remove the Session 1 PDF spike and the redundant scaffold browser test. CI now runs the full lifecycle Playwright test after its normal checks, with an ephemeral Auth.js secret. Next.js 16 generated an agent guidance block in `AGENTS.md`; it is kept to avoid a recurring uncommitted change during development.
 6. **Cross-platform SQLite path.** Resolve relative `file:` paths against the repository root in one helper and pass its absolute URL to Prisma CLI, seed and app. This prevents the CLI's schema-relative interpretation from opening a different database. Invoke the Prisma generator through Node's JS entry point because Node 24 on Windows can reject direct `spawnSync` of `prisma.cmd` with `EINVAL`.
+
+## Session 6
+
+1. **Presentation scope.** Reuse Tailwind 3, existing Recharts and PDFKit, and the system font stack. CSS variables in `src/app/globals.css` hold color and spacing tokens; device color preference controls the optional dark palette. No package, schema, authorization, API, or lifecycle changes are needed.
+2. **Dashboard display metrics.** The new stat cards and 30-day trend derive from the same already-authorized dashboard rows and existing statistics. The original chart links and filter query parameters remain in place.
+3. **Demo seed expectation.** The requested richer demo increases the deterministic seed from 25 to 40 bugs per project, so the only changed test expectation is the seed count and sequential range in `tests/seed-plan.test.ts`. The test also checks Strong, Acceptable and Incomplete reports, all note types, and the 90-day window. Existing UI labels and lifecycle Playwright selectors stay stable.
+4. **PDF styling.** A branded header and colored severity/status text are drawn around the same report sections and content order.
+
+## Session 6 area follow-up
+
+1. **Default areas.** Project creation now creates General, Setup, Authentication and Testing in the same database operation as the project and Admin membership. Existing projects keep their areas; Admins can add missing ones in settings. The existing `(projectId, name)` unique constraint enforces names within a project.
+2. **Removing areas in use.** An area referenced by any bug cannot be removed. Settings shows its bug count and hides the remove action, while the server returns a conflict for direct attempts. This preserves the bug's area and follows the existing restrictive foreign key without changing the schema or reports.
+3. **Test fixture cleanup.** Session 2's test setup now deletes areas before projects, because newly created projects own default areas. Added service tests for defaults, unique names, project isolation, roles, archived projects and referenced-area protection; added a Playwright flow for settings, the bug form and dashboard.
+4. **Browser test database.** Playwright runs one worker against its shared local SQLite database. The new project flow and existing lifecycle flow were competing for the single writer and delayed dev-server redirects when run together. The new flow waits for its destination headings with a longer timeout; all assertions remain in place.
+
+## Session 6 permanent deletion follow-up
+
+1. **Archive-only override.** This deliberately overrides the earlier choice to archive projects without deleting them. Only a project Admin may delete, only after archive, and only after entering the exact project key. Non-members receive 404. The central project policy checks both the new `deleteProject` permission and the archived state.
+2. **Atomic children and history removal.** The existing database trigger forbids deleting status history. A migration narrows its exception to an archived project whose `nextBugNumber` is temporarily set to zero inside the deletion transaction. The transaction removes history, notes, steps, bugs, areas, memberships and the project in foreign-key order. The marker either rolls back or vanishes with the project. Status history stays immutable while the project exists outside this deletion transaction.
+3. **Origin protection.** The new JSON DELETE route uses the existing `parseJson` origin, fetch-metadata, content-type and request-size checks. The service repeats authorization inside its transaction so the permission and archived state are checked with the rows being deleted.
+
+## Session 6 activity timeline follow-up
+
+1. **Display-only edit entries.** Keep the existing reserved Observation note format for edit audit data and its edit protection. The bug timeline recognizes that format as an Edit entry, resolves assignee and area IDs to available names, and shows readable field labels. Former users and areas get descriptive fallbacks instead of raw IDs. Historical no-op entries are hidden without changing their stored records. No schema or permission changes are needed.
+2. **No-op assignment.** A repeated assignment to the same user now returns the existing bug without writing another audit note. Report edits already skip unchanged values. Integration tests cover both paths, and the browser flow checks the new timeline text.
+
+## Session 6 PDF edit-log follow-up
+
+1. **Investigation notes.** Reserved `[Edit log]` notes remain in the database and timeline, but the PDF excludes them from notes grouped by type. The report keeps its existing section order and does not add an Edit history section.
+2. **PDF text shaping.** DejaVu Sans combines the letters “fi” into an optional ligature in “Verification” and “Verified.” PDF text now disables optional `liga` and `clig` substitutions so those letters remain separate in the embedded font. The summary label reads “Extra context.” PDF output was checked with text extraction and a rendered page.

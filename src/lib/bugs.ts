@@ -283,6 +283,7 @@ export async function assignBug(
     if (!member || member.role !== "Developer")
       throw new AppError("Assignee must be a project developer", 400);
   }
+  if (bug.assigneeId === assigneeId) return bug;
   return client.$transaction(async (tx) => {
     const updated = await tx.bug.update({
       where: { id: bugId },

@@ -5,6 +5,27 @@ import { listBugs } from "@/lib/bugs";
 import { projectActor } from "@/lib/request";
 import { listSchema } from "@/lib/validation";
 import { evaluate } from "@/lib/completeness";
+import {
+  Avatar,
+  Badge,
+  Button,
+  Completeness,
+  EmptyState,
+  Icon,
+  PageHeader,
+  SeverityBadge,
+  StatusBadge,
+} from "@/components/ui";
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Bugs" };
+
+function relativeTime(value: Date) {
+  const days = Math.max(
+    0,
+    Math.floor((Date.now() - value.getTime()) / 86_400_000),
+  );
+  return days === 0 ? "Today" : days === 1 ? "Yesterday" : `${days}d ago`;
+}
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -45,20 +66,25 @@ export default async function BugListPage({ params, searchParams }: Props) {
     return `?${p}`;
   };
   return (
-    <main className="mx-auto max-w-6xl p-8">
-      <Link href="/" className="underline">
-        Projects
+    <div className="space-y-6">
+      <Link
+        href="/projects"
+        className="accent-text text-sm font-semibold hover:underline"
+      >
+        ← Projects
       </Link>
-      <div className="mt-4 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">{project.name} bugs</h1>
-        <Link
-          className="rounded bg-slate-900 p-2 text-white"
-          href={`/projects/${projectId}/bugs/new`}
-        >
-          New bug
-        </Link>
-      </div>
-      <form className="mt-6 grid gap-2 md:grid-cols-4">
+      <PageHeader
+        eyebrow={`${project.key} / Issues`}
+        title={`${project.name} bugs`}
+        description="Review, prioritize, and track every report in one place."
+        action={
+          <Button href={`/projects/${projectId}/bugs/new`}>
+            <Icon name="bug" className="h-4 w-4" />
+            New bug
+          </Button>
+        }
+      />
+      <form className="card grid gap-4 md:grid-cols-3 xl:grid-cols-5">
         {raw.unresolved === "1" && (
           <input type="hidden" name="unresolved" value="1" />
         )}
@@ -186,39 +212,89 @@ export default async function BugListPage({ params, searchParams }: Props) {
             defaultValue={raw.to ?? ""}
           />
         </label>
-        <button className="self-end rounded bg-slate-900 p-2 text-white">
-          Apply filters
-        </button>
+        <button className="button self-end">Apply filters</button>
       </form>
-      <p className="mt-6">{result.total} bugs</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="eyebrow">Issue register</p>
+          <h2 className="section-title">{result.total} bugs</h2>
+        </div>
+        <Badge tone="acceptable">{project.key} workspace</Badge>
+      </div>
       {result.items.length === 0 ? (
-        <p className="mt-4">No bugs match these filters.</p>
+        <EmptyState
+          title="No bugs match these filters."
+          description="Try clearing a filter or search term to find more reports."
+          action={{
+            label: "Clear filters",
+            href: `/projects/${projectId}/bugs`,
+          }}
+        />
       ) : (
-        <ul className="mt-2 divide-y">
+        <ul className="grid gap-4">
           {result.items.map((bug) => (
-            <li key={bug.id} className="py-3">
-              <Link
-                className="font-semibold underline"
-                href={`/projects/${projectId}/bugs/${bug.id}`}
-              >
-                {project.key}-{bug.number}: {bug.title}
-              </Link>
-              <p className="text-sm text-slate-600">
-                {bug.status} · {bug.severity ?? "No severity"} ·{" "}
-                {bug.area?.name ?? "No area"} ·{" "}
-                {bug.assignee?.name ?? "Unassigned"}
-              </p>
-              <p
-                className={
-                  bug.completenessLevel === "Incomplete"
-                    ? "font-semibold text-amber-800"
-                    : ""
-                }
-              >
-                {bug.completenessLevel} · {bug.completenessScore}/100
-              </p>
+            <li
+              key={bug.id}
+              className="card transition-transform hover:-translate-y-0.5"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className="eyebrow !mb-0">
+                      {project.key}-{bug.number}
+                    </span>
+                    <SeverityBadge value={bug.severity} />
+                    <StatusBadge value={bug.status} />
+                    {bug.completenessLevel === "Incomplete" && (
+                      <Badge tone="incomplete">Incomplete</Badge>
+                    )}
+                  </div>
+                  <Link
+                    className="text-lg font-bold hover:underline"
+                    href={`/projects/${projectId}/bugs/${bug.id}`}
+                  >
+                    {project.key}-{bug.number}: {bug.title}
+                  </Link>
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+                    <span className="badge">{bug.area?.name ?? "No area"}</span>
+                    <span className="muted">
+                      Reported {relativeTime(bug.createdAt)}
+                    </span>
+                    <span className="muted">
+                      Updated {relativeTime(bug.updatedAt)}
+                    </span>
+                  </div>
+                </div>
+                <Completeness
+                  score={bug.completenessScore}
+                  level={bug.completenessLevel}
+                />
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-5 border-t thin-divider pt-4 text-xs">
+                <span className="flex items-center gap-2">
+                  <Avatar
+                    name={
+                      project.members.find((m) => m.userId === bug.reporterId)
+                        ?.user.name ?? "Reporter"
+                    }
+                    size="sm"
+                  />
+                  <span>
+                    <span className="muted block">Reporter</span>
+                    {project.members.find((m) => m.userId === bug.reporterId)
+                      ?.user.name ?? "Reporter"}
+                  </span>
+                </span>
+                <span className="flex items-center gap-2">
+                  <Avatar name={bug.assignee?.name ?? "Unassigned"} size="sm" />
+                  <span>
+                    <span className="muted block">Assignee</span>
+                    {bug.assignee?.name ?? "Unassigned"}
+                  </span>
+                </span>
+              </div>
               {evaluate(bug).missing.length > 0 && (
-                <details>
+                <details className="mt-4 text-xs muted">
                   <summary>Completeness reasons</summary>
                   <ul className="list-disc pl-6">
                     {evaluate(bug).missing.map((gap) => (
@@ -233,13 +309,13 @@ export default async function BugListPage({ params, searchParams }: Props) {
           ))}
         </ul>
       )}
-      <nav className="mt-6 flex gap-4">
+      <nav className="flex items-center justify-center gap-4">
         {result.page > 1 && (
           <Link className="underline" href={url(result.page - 1)}>
             Previous
           </Link>
         )}
-        <span>
+        <span className="muted text-sm">
           Page {result.page} of {result.pages}
         </span>
         {result.page < result.pages && (
@@ -248,6 +324,6 @@ export default async function BugListPage({ params, searchParams }: Props) {
           </Link>
         )}
       </nav>
-    </main>
+    </div>
   );
 }

@@ -27,7 +27,7 @@ async function main() {
     await prisma.project.upsert({
       where: { id: project.id },
       update: {},
-      create: { ...project, nextBugNumber: 26 },
+      create: { ...project, nextBugNumber: 41 },
     });
     for (const [index, name] of seedAreas.entries()) {
       await prisma.area.upsert({
@@ -78,11 +78,11 @@ async function main() {
   }
   for (const project of seedProjects) {
     await prisma.project.updateMany({
-      where: { id: project.id, nextBugNumber: { lt: 26 } },
-      data: { nextBugNumber: 26 },
+      where: { id: project.id, nextBugNumber: { lt: 41 } },
+      data: { nextBugNumber: 41 },
     });
   }
-  console.log("Seeded 9 demo users, 2 projects, and 50 bugs.");
+  console.log("Seeded 9 demo users, 2 projects, and 80 bugs.");
 }
 
 main()

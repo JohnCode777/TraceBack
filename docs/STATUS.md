@@ -59,3 +59,44 @@
 - Personal-data finding: the history scan found no tracked secrets, `.env` or database files, and demo records are synthetic. It did find real contributor email addresses in the bundled font license and personal author emails in existing `main` commit metadata. This PR cannot remove that historical metadata; a literal no-personal-data claim is not met.
 - Known broken: none in the local checks above. Remote CI and deployment behavior are not yet verified.
 - Skipped: an external penetration test, large-scale load testing beyond 1,200 bugs, a working Postgres migration, and rewriting existing `main` history. The README documents the Postgres switch; implementation was outside Session 5.
+
+## Session 6
+
+- Done: responsive dark sidebar and light content shell, reusable cards, buttons, badges, avatars, tabs, empty states, headers, skeletons and completeness ring; shared CSS tokens, system font and optional device dark palette.
+- Done: dashboard summary cards and 30-day trend, refined Recharts styling, bug list and detail presentation, sectioned report form with sticky live completeness, richer project and login layouts, reporting help styling, branded PDF header and colored labels, favicon and page titles.
+- Done: deterministic fake seed expanded to 80 reports across both projects, spanning the last 90 days with varied severity, status, area, completeness and note types. Existing demo accounts remain.
+- Checks: lint, type-check, 108 unit/integration tests, production build, the full Playwright lifecycle and PDF download test, format check, and `npm audit --omit=dev` (0 vulnerabilities) passed locally. Fresh migration and seed succeeded, and a second seed run kept 9 accounts and 80 bugs without duplicates.
+- Partial: none within the requested Session 6 scope. Remote CI is pending the pull request.
+- Known broken: none in the local checks above.
+
+## Session 6 area follow-up
+
+- Done: new projects receive four default areas; Admins can add unique area names and remove unused areas in Project settings. Areas assigned to bugs remain protected.
+- Done: service permission and data tests plus a Playwright flow covering project creation, area management, area selection on a new bug and the dashboard area chart.
+- Checks: lint, type-check, 111 unit/integration tests, production build, formatting, and both Playwright flows passed locally. Fresh migration and seed also passed.
+- Partial: none in this follow-up. Remote CI is pending the updated pull request.
+- Known broken: none found in local checks.
+
+## Session 6 permanent deletion follow-up
+
+- Done: archived project deletion for Admins with exact project-key confirmation and the existing JSON mutation origin checks. The service removes project children in one transaction, including status history, while preserving user accounts.
+- Done: central `deleteProject` policy permission, migration for the narrow status-history trigger exception, updated specification and decision record, route and migration tests, and browser coverage of the confirmation flow.
+- Checks: lint, type-check, 121 unit/integration tests, production build, format check and both Playwright flows passed locally. The new migration applied successfully.
+- Partial: none within this follow-up. Remote CI is pending the updated pull request.
+- Known broken: none found in local checks.
+
+## Session 6 activity timeline follow-up
+
+- Done: edit audit entries render as distinct Edit activity with readable field labels, assignee names and area names. Historical no-op entries are hidden; stored note bodies and permissions are unchanged.
+- Done: unchanged assignments no longer append audit notes; unchanged report edits remain no-ops. Parser, formatter, service and browser assertions cover the behavior.
+- Checks: lint, type-check, 125 unit/integration tests, production build, formatting and both Playwright flows passed locally.
+- Partial: none within this follow-up.
+- Known broken: none found in local checks.
+
+## Session 6 PDF edit-log follow-up
+
+- Done: reserved edit logs are omitted from PDF Investigation notes, while the distinct Edit timeline display and no-op guards remain in place. The PDF label is “Extra context,” and optional font ligatures are disabled for reliable verification labels.
+- Done: tests cover PDF note filtering and font mapping; rendered output and extracted text show complete “Verification record,” “Verified by” and “Verified at” labels.
+- Checks: lint, type-check, 127 unit/integration tests, production build, formatting, fresh migration and seed, and both Playwright flows passed locally.
+- Partial: none within this follow-up.
+- Known broken: none found in local checks.

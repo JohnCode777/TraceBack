@@ -15,10 +15,12 @@ Roles are per project (a user can hold different roles in different projects).
 | Verify | Yes | No | Yes |
 | Reopen / Regression | Yes | No | Yes |
 | Manage members and project settings | No | No | Yes |
+| Delete archived project (key confirmation) | No | No | Yes |
 | View dashboard | Yes | Yes | Yes |
 | Download report | Yes | Yes | Yes |
 
 A user can never see a project they are not a member of. Non-members receive a 404, not a 403.
+Projects must be archived before an Admin can delete them. Deletion permanently removes the project and its areas, members, bugs, reproduction steps, notes and status history in one transaction.
 
 ### 5.2 Bug lifecycle (state machine)
 
@@ -32,7 +34,7 @@ A user can never see a project they are not a member of. Non-members receive a 4
 
 All other transitions are rejected with a clear error. There is **no path** from Submitted or Investigating to Verified. The developer who marked a bug Fixed cannot be the one who verifies it unless they are an Admin.
 
-Every transition writes an **immutable** `StatusChange` record: bug, from, to, actor, comment, timestamp. Records are never updated or deleted.
+Every transition writes an **immutable** `StatusChange` record: bug, from, to, actor, comment, timestamp. Records are never updated or deleted while the project exists; deleting an archived project also removes its status history.
 
 ### 5.3 Fields
 

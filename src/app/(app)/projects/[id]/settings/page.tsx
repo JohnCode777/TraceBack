@@ -2,11 +2,16 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import {
+  addAreaAction,
   addMemberAction,
   archiveProjectAction,
   editProjectAction,
+  removeAreaAction,
 } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
+import { DeleteProjectForm } from "@/components/delete-project-form";
+import { Badge } from "@/components/ui";
+import { db } from "@/lib/db";
 import { getProject, ProjectError } from "@/lib/projects";
 import { can } from "@/lib/policy";
 import { roleSchema } from "@/lib/validators";
@@ -15,7 +20,12 @@ export default async function SettingsPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string; memberAdded?: string }>;
+  searchParams: Promise<{
+    saved?: string;
+    memberAdded?: string;
+    areaAdded?: string;
+    areaRemoved?: string;
+  }>;
 }) {
   const { id } = await params;
   const messages = await searchParams;
@@ -37,6 +47,11 @@ export default async function SettingsPage({
         <p>Only project admins can manage settings.</p>
       </div>
     );
+  const areas = await db.area.findMany({
+    where: { projectId: id },
+    include: { _count: { select: { bugs: true } } },
+    orderBy: { name: "asc" },
+  });
   return (
     <>
       <div>
@@ -47,8 +62,20 @@ export default async function SettingsPage({
       </div>
       {messages.saved && <p className="text-green-700">Project updated.</p>}
       {messages.memberAdded && <p className="text-green-700">Member added.</p>}
+      {messages.areaAdded && <p className="text-green-700">Area added.</p>}
+      {messages.areaRemoved && <p className="text-green-700">Area removed.</p>}
       {project.archivedAt ? (
-        <div className="card">This project is archived and read-only.</div>
+        <>
+          <div className="card">This project is archived and read-only.</div>
+          <section className="card space-y-4 border-red-200">
+            <h2 className="text-lg font-semibold">Delete project</h2>
+            <p className="muted text-sm">
+              This permanently removes the project, its members, areas, bugs,
+              steps, notes and status history. This cannot be undone.
+            </p>
+            <DeleteProjectForm projectId={id} projectKey={project.key} />
+          </section>
+        </>
       ) : (
         <>
           <section className="card space-y-4">
@@ -81,6 +108,52 @@ export default async function SettingsPage({
             <p className="text-sm text-slate-600">
               Project key: {project.key} (cannot be changed)
             </p>
+          </section>
+          <section className="card space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Areas</h2>
+              <p className="muted mt-1 text-sm">
+                Use areas to group bug reports and reveal recurring problems on
+                the dashboard.
+              </p>
+            </div>
+            <ActionForm action={addAreaAction.bind(null, id)} submit="Add area">
+              <div className="field max-w-md">
+                <label htmlFor="area-name">Area name</label>
+                <input id="area-name" name="name" required maxLength={100} />
+              </div>
+            </ActionForm>
+            {areas.length === 0 ? (
+              <p className="muted text-sm">
+                No areas yet. Add one to organize reports.
+              </p>
+            ) : (
+              <ul className="divide-y thin-divider rounded-xl border thin-divider">
+                {areas.map((area) => (
+                  <li
+                    key={area.id}
+                    className="flex flex-wrap items-center justify-between gap-3 p-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold">{area.name}</span>
+                      <Badge>{area._count.bugs} bugs</Badge>
+                    </div>
+                    {area._count.bugs === 0 ? (
+                      <ActionForm
+                        action={removeAreaAction.bind(null, id)}
+                        submit={`Remove ${area.name}`}
+                      >
+                        <input type="hidden" name="areaId" value={area.id} />
+                      </ActionForm>
+                    ) : (
+                      <span className="muted text-xs">
+                        In use · cannot remove
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
           <section className="card space-y-4">
             <h2 className="text-lg font-semibold">Add existing user</h2>

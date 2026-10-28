@@ -4,12 +4,12 @@ import { buildSeedBugs, seedProjects } from "../prisma/seed-plan";
 describe("demo seed plan", () => {
   const bugs = buildSeedBugs(new Date("2026-10-25T12:00:00Z"));
 
-  it("creates 25 sequential bugs per project with all four statuses", () => {
-    expect(bugs).toHaveLength(50);
+  it("creates 40 sequential bugs per project with all four statuses", () => {
+    expect(bugs).toHaveLength(80);
     for (const project of seedProjects) {
       const projectBugs = bugs.filter((bug) => bug.projectId === project.id);
       expect(projectBugs.map((bug) => bug.number)).toEqual(
-        Array.from({ length: 25 }, (_, index) => index + 1),
+        Array.from({ length: 40 }, (_, index) => index + 1),
       );
       expect(new Set(projectBugs.map((bug) => bug.status))).toEqual(
         new Set(["Submitted", "Investigating", "Fixed", "Verified"]),
@@ -46,5 +46,25 @@ describe("demo seed plan", () => {
     ).toBe(true);
     expect(bugs.some((bug) => bug.areaId === null)).toBe(true);
     expect(bugs.some((bug) => bug.severity === null)).toBe(true);
+  });
+  it("shows varied report quality and every note type", () => {
+    expect(new Set(bugs.map((bug) => bug.completenessLevel))).toEqual(
+      new Set(["Strong", "Acceptable", "Incomplete"]),
+    );
+    expect(
+      new Set(bugs.flatMap((bug) => bug.notes.map((note) => note.type))),
+    ).toEqual(
+      new Set([
+        "Observation",
+        "Hypothesis",
+        "Ruled out",
+        "Root cause",
+        "Workaround",
+        "Question",
+      ]),
+    );
+    expect(
+      bugs.every((bug) => bug.createdAt >= new Date("2026-07-27T12:00:00Z")),
+    ).toBe(true);
   });
 });

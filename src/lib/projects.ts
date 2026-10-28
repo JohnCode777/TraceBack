@@ -3,7 +3,10 @@ import { db } from "./db";
 import { can, type Action } from "./policy";
 import {
   addMemberSchema,
+  areaIdSchema,
+  createAreaSchema,
   createProjectSchema,
+  deleteProjectSchema,
   editProjectSchema,
   roleSchema,
 } from "./validators";
@@ -16,6 +19,13 @@ export class ProjectError extends Error {
     super(message);
   }
 }
+
+export const defaultAreaNames = [
+  "General",
+  "Setup",
+  "Authentication",
+  "Testing",
+] as const;
 
 export async function listProjects(userId: string) {
   return db.project.findMany({
@@ -43,25 +53,76 @@ export async function requireProjectAction(
   userId: string,
   projectId: string,
   action: Action,
+  options: {
+    client?: Pick<Prisma.TransactionClient, "projectMember">;
+    allowArchived?: boolean;
+  } = {},
 ) {
-  const member = await db.projectMember.findUnique({
+  const member = await (options.client ?? db).projectMember.findUnique({
     where: { projectId_userId: { projectId, userId } },
     include: { project: true },
   });
   if (!member) throw new ProjectError("Project not found.", 404);
   const role = roleSchema.parse(member.role);
-  if (!can(role, action))
+  const isArchived = member.project.archivedAt !== null;
+  if (!can(role, action, { isArchived })) {
+    if (action === "deleteProject" && can(role, action, { isArchived: true }))
+      throw new ProjectError("Archive the project before deleting it.", 409);
     throw new ProjectError("You do not have permission to do this.", 403);
-  if (member.project.archivedAt)
+  }
+  if (member.project.archivedAt && !options.allowArchived)
     throw new ProjectError("Archived projects are read-only.", 409);
   return member.project;
+}
+
+export async function deleteProject(
+  userId: string,
+  projectId: string,
+  input: unknown,
+) {
+  const { confirmationKey } = deleteProjectSchema.parse(input);
+  return db.$transaction(async (tx) => {
+    const project = await requireProjectAction(
+      userId,
+      projectId,
+      "deleteProject",
+      { client: tx, allowArchived: true },
+    );
+    if (confirmationKey !== project.key)
+      throw new ProjectError("Project key does not match.", 400);
+
+    // The trigger permits history removal only during this archived-project
+    // transaction. A rollback restores both the marker and every child row.
+    await tx.project.update({
+      where: { id: projectId },
+      data: { nextBugNumber: 0 },
+    });
+    const bugIds = (
+      await tx.bug.findMany({
+        where: { projectId },
+        select: { id: true },
+      })
+    ).map((bug) => bug.id);
+    await tx.statusChange.deleteMany({ where: { bugId: { in: bugIds } } });
+    await tx.note.deleteMany({ where: { bugId: { in: bugIds } } });
+    await tx.reproStep.deleteMany({ where: { bugId: { in: bugIds } } });
+    await tx.bug.deleteMany({ where: { projectId } });
+    await tx.area.deleteMany({ where: { projectId } });
+    await tx.projectMember.deleteMany({ where: { projectId } });
+    await tx.project.delete({ where: { id: projectId } });
+    return { id: projectId };
+  });
 }
 
 export async function createProject(userId: string, input: unknown) {
   const data = createProjectSchema.parse(input);
   try {
     return await db.project.create({
-      data: { ...data, members: { create: { userId, role: "Admin" } } },
+      data: {
+        ...data,
+        members: { create: { userId, role: "Admin" } },
+        areas: { create: defaultAreaNames.map((name) => ({ name })) },
+      },
     });
   } catch (error) {
     if (
@@ -69,6 +130,53 @@ export async function createProject(userId: string, input: unknown) {
       error.code === "P2002"
     )
       throw new ProjectError("Project key is already in use.", 409);
+    throw error;
+  }
+}
+
+export async function addProjectArea(
+  userId: string,
+  projectId: string,
+  input: unknown,
+) {
+  const { name } = createAreaSchema.parse(input);
+  await requireProjectAction(userId, projectId, "manageProject");
+  try {
+    return await db.area.create({ data: { projectId, name } });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    )
+      throw new ProjectError("Area already exists in this project.", 409);
+    throw error;
+  }
+}
+
+export async function removeProjectArea(
+  userId: string,
+  projectId: string,
+  areaId: unknown,
+) {
+  const validAreaId = areaIdSchema.parse(areaId);
+  await requireProjectAction(userId, projectId, "manageProject");
+  const area = await db.area.findFirst({
+    where: { id: validAreaId, projectId },
+  });
+  if (!area) throw new ProjectError("Area not found.", 404);
+  if (await db.bug.count({ where: { projectId, areaId: validAreaId } }))
+    throw new ProjectError("Area is used by bugs and cannot be removed.", 409);
+  try {
+    return await db.area.delete({ where: { id: area.id } });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2003"
+    )
+      throw new ProjectError(
+        "Area is used by bugs and cannot be removed.",
+        409,
+      );
     throw error;
   }
 }

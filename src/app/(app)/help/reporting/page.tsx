@@ -1,16 +1,21 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Reporting help" };
 
 export default function ReportingHelpPage() {
   return (
-    <main className="mx-auto max-w-2xl space-y-6">
-      <div>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div className="page-hero">
+        <p className="mb-3 text-xs font-bold uppercase tracking-[.2em]">
+          Reporting guide
+        </p>
         <h1 className="text-3xl font-bold">How to write a good bug report</h1>
-        <p className="mt-2 text-slate-700">
+        <p className="mt-2">
           Give another person enough detail to see the same failure and check
           that a fix works.
         </p>
       </div>
-      <ol className="list-decimal space-y-4 pl-6">
+      <ol className="card list-decimal space-y-5 pl-12">
         <li>
           <strong>Name the problem precisely.</strong> Describe what failed and
           where, such as “Saving a report shows an error,” rather than “Broken.”
@@ -36,13 +41,13 @@ export default function ReportingHelpPage() {
           and personal data before pasting anything.
         </li>
       </ol>
-      <p className="rounded border border-blue-200 bg-blue-50 p-4 text-blue-950">
+      <p className="rounded-2xl border border-violet-200 bg-violet-50 p-5 text-violet-950">
         You can submit an incomplete report. TraceBack shows its score and the
         specific details that would make it easier to investigate.
       </p>
-      <Link className="font-medium text-blue-700 underline" href="/projects">
+      <Link className="accent-text font-semibold underline" href="/projects">
         Back to projects
       </Link>
-    </main>
+    </div>
   );
 }

@@ -6,6 +6,10 @@ const migration = readFileSync(
   "prisma/migrations/20261025120000_init/migration.sql",
   "utf8",
 );
+const deletionMigration = readFileSync(
+  "prisma/migrations/20261028100000_project_deletion/migration.sql",
+  "utf8",
+);
 let database: DatabaseSync;
 
 beforeEach(() => {
@@ -58,5 +62,21 @@ describe("initial migration", () => {
     expect(() =>
       database.exec(`DELETE FROM "StatusChange" WHERE id = 's1'`),
     ).toThrow(/StatusChange is immutable/);
+  });
+});
+
+describe("project deletion migration", () => {
+  it("keeps history immutable unless an archived project is being deleted", () => {
+    database.exec(deletionMigration);
+    database.exec(
+      `UPDATE "Project" SET "archivedAt" = CURRENT_TIMESTAMP WHERE id = 'p1'`,
+    );
+    expect(() =>
+      database.exec(`DELETE FROM "StatusChange" WHERE id = 's1'`),
+    ).toThrow(/StatusChange is immutable/);
+    database.exec(`UPDATE "Project" SET "nextBugNumber" = 0 WHERE id = 'p1'`);
+    expect(() =>
+      database.exec(`DELETE FROM "StatusChange" WHERE id = 's1'`),
+    ).not.toThrow();
   });
 });

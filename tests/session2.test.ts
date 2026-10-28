@@ -2,12 +2,15 @@ import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { db } from "../src/lib/db";
 import { authenticateCredentials, registerUser } from "../src/lib/users";
 import {
+  addProjectArea,
   addProjectMember,
   archiveProject,
   createProject,
+  defaultAreaNames,
   editProject,
   getProject,
   listProjects,
+  removeProjectArea,
 } from "../src/lib/projects";
 
 let adminId: string;
@@ -19,6 +22,7 @@ let otherProjectId: string;
 
 beforeAll(async () => {
   await db.projectMember.deleteMany();
+  await db.area.deleteMany();
   await db.project.deleteMany();
   await db.user.deleteMany();
   await db.loginThrottle.deleteMany();
@@ -124,6 +128,15 @@ describe("registration, credentials, and login throttle", () => {
 });
 
 describe("project isolation and role enforcement", () => {
+  it("creates four default areas for every new project", async () => {
+    for (const id of [projectId, otherProjectId]) {
+      expect(
+        (await db.area.findMany({ where: { projectId: id } }))
+          .map((area) => area.name)
+          .sort(),
+      ).toEqual([...defaultAreaNames].sort());
+    }
+  });
   it("lists only the user’s projects", async () => {
     expect((await listProjects(adminId)).map((p) => p.id)).toEqual([projectId]);
     expect((await listProjects(outsiderId)).map((p) => p.id)).toEqual([
@@ -149,6 +162,13 @@ describe("project isolation and role enforcement", () => {
         role: "Admin",
       }),
     ).rejects.toMatchObject({ status: 404 });
+    await expect(
+      addProjectArea(outsiderId, projectId, { name: "Support" }),
+    ).rejects.toMatchObject({ status: 404 });
+    const area = await db.area.findFirstOrThrow({ where: { projectId } });
+    await expect(
+      removeProjectArea(outsiderId, projectId, area.id),
+    ).rejects.toMatchObject({ status: 404 });
   });
   it("allows members to view but forbids tester and developer settings changes", async () => {
     expect((await getProject(testerId, projectId)).id).toBe(projectId);
@@ -164,6 +184,13 @@ describe("project isolation and role enforcement", () => {
           email: "outsider@example.test",
           role: "Tester",
         }),
+      ).rejects.toMatchObject({ status: 403 });
+      await expect(
+        addProjectArea(userId, projectId, { name: "Support" }),
+      ).rejects.toMatchObject({ status: 403 });
+      const area = await db.area.findFirstOrThrow({ where: { projectId } });
+      await expect(
+        removeProjectArea(userId, projectId, area.id),
       ).rejects.toMatchObject({ status: 403 });
     }
   });
@@ -201,6 +228,50 @@ describe("project isolation and role enforcement", () => {
     );
     expect((await listProjects(adminId)).map((p) => p.id)).toEqual([projectId]);
   });
+  it("adds unique area names within each project and removes unused areas", async () => {
+    const area = await addProjectArea(adminId, projectId, {
+      name: "  Support  ",
+    });
+    expect(area.name).toBe("Support");
+    await expect(
+      addProjectArea(adminId, projectId, { name: "Support" }),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(
+      addProjectArea(adminId, projectId, { name: "  " }),
+    ).rejects.toThrow();
+    const otherArea = await addProjectArea(outsiderId, otherProjectId, {
+      name: "Support",
+    });
+    await expect(
+      removeProjectArea(adminId, projectId, otherArea.id),
+    ).rejects.toMatchObject({ status: 404 });
+    await removeProjectArea(adminId, projectId, area.id);
+    expect(await db.area.findUnique({ where: { id: area.id } })).toBeNull();
+    expect(
+      await db.area.findUnique({ where: { id: otherArea.id } }),
+    ).not.toBeNull();
+  });
+  it("protects areas referenced by bugs", async () => {
+    const area = await db.area.findFirstOrThrow({
+      where: { projectId, name: "General" },
+    });
+    const bug = await db.bug.create({
+      data: {
+        projectId,
+        number: 999,
+        title: "Fake test bug",
+        reporterId: testerId,
+        areaId: area.id,
+      },
+    });
+    try {
+      await expect(
+        removeProjectArea(adminId, projectId, area.id),
+      ).rejects.toMatchObject({ status: 409 });
+    } finally {
+      await db.bug.delete({ where: { id: bug.id } });
+    }
+  });
   it("archives a project and rejects later changes", async () => {
     expect(
       (await archiveProject(adminId, projectId)).archivedAt,
@@ -214,6 +285,13 @@ describe("project isolation and role enforcement", () => {
         email: "admin@example.test",
         role: "Admin",
       }),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(
+      addProjectArea(adminId, projectId, { name: "Archived area" }),
+    ).rejects.toMatchObject({ status: 409 });
+    const area = await db.area.findFirstOrThrow({ where: { projectId } });
+    await expect(
+      removeProjectArea(adminId, projectId, area.id),
     ).rejects.toMatchObject({ status: 409 });
   });
   it("rejects invalid project keys and duplicate keys", async () => {

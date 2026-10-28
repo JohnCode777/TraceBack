@@ -14,7 +14,11 @@ npm run seed
 npm run dev
 ```
 
-Open the address printed by `npm run dev` (normally [http://localhost:3000](http://localhost:3000)). Sign in as `tester1@example.test` or `developer1@example.test` with the **fake local demo password** `traceback-demo-password`. The seed also creates `admin1@example.test`, two projects and 50 synthetic bugs. The seeded users and data are for local evaluation only. Registration is available; a new account starts without a project until it creates one or an Admin adds it.
+Open the address printed by `npm run dev` (normally [http://localhost:3000](http://localhost:3000)). Sign in as `tester1@example.test` or `developer1@example.test` with the **fake local demo password** `traceback-demo-password`. The seed also creates `admin1@example.test`, two projects and 80 synthetic bugs. The seeded users and data are for local evaluation only. Registration is available; a new account starts without a project until it creates one or an Admin adds it.
+
+## UI notes
+
+Session 6 uses a dark sidebar, light content cards, indigo and violet accents, and a responsive layout for laptop and projector screens. Colors and spacing live in `src/app/globals.css`; the system font stack works offline. The app follows the device's light or dark color preference, and reduced motion disables decorative animation. Dashboard chart segments and summary cards still link to filtered bug lists. The seed fills both demo projects with fake reports across the last 90 days so the dashboard is useful for a live demo.
 
 The `.env` file and SQLite databases are ignored by Git. `npm run seed` can be rerun without replacing existing seeded bugs. The first `npm ci` needs access to the npm registry; the Prisma client generator is configured to avoid downloading unused Rust engines.
 
