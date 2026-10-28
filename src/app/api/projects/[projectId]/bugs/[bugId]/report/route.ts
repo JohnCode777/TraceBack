@@ -35,6 +35,10 @@ export async function GET(
         ...change,
         actor: change.actor.name,
       })),
+      verificationAttempts: bug.verificationAttempts.map((attempt) => ({
+        ...attempt,
+        verifierName: attempt.verifier.name,
+      })),
     });
     return new Response(new Uint8Array(pdf), {
       headers: {

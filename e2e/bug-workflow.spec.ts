@@ -76,18 +76,60 @@ test("tester files, developer fixes, tester verifies and downloads a report", as
   await expect(developer.locator("main > p").first()).toContainText("Fixed");
 
   await tester.goto(bugUrl);
-  await tester.getByLabel("Move to").selectOption("Investigating");
-  await tester.getByLabel("Comment or reason").fill("The error still occurs");
-  await tester.getByRole("button", { name: "Update status" }).click();
-  await expect(tester.getByText("The error still occurs")).toBeVisible();
+  await tester.getByRole("button", { name: "Verify", exact: true }).click();
+  await expect(tester.getByText("0 of 2 steps checked")).toBeVisible();
+  await tester
+    .getByRole("group", { name: "Step 1: Open the report" })
+    .getByRole("radio", { name: "Pass" })
+    .check();
+  await tester
+    .getByRole("group", { name: "Step 2: Press save" })
+    .getByRole("radio", { name: "Fail" })
+    .check();
+  await tester
+    .getByRole("group", { name: "Step 2: Press save" })
+    .getByRole("textbox", { name: "Comment (optional)" })
+    .fill("The error still occurs");
+  await tester
+    .getByRole("group", { name: "Does the original problem still occur?" })
+    .getByRole("radio", { name: "Yes" })
+    .check();
+  await expect(tester.getByText("2 of 2 steps checked")).toBeVisible();
+  await expect(tester.getByLabel("Reopen reason")).toHaveValue(
+    "Step 2 failed: The error still occurs; Original problem still occurs",
+  );
+  await tester
+    .getByLabel("Reopen reason")
+    .fill("Step 2 failed: The error still occurs");
+  await tester.getByRole("button", { name: "Reopen", exact: true }).click();
+  await expect(
+    tester.getByText("Step 2 failed: The error still occurs").first(),
+  ).toBeVisible();
   await developer.reload();
   await developer
     .getByLabel("Resolution summary")
     .fill("Corrected save state again");
   await developer.getByRole("button", { name: "Update status" }).click();
   await tester.reload();
-  await tester.getByRole("button", { name: "Update status" }).click();
+  await tester.getByRole("button", { name: "Verify", exact: true }).click();
+  await tester
+    .getByRole("group", { name: "Step 1: Open the report" })
+    .getByRole("radio", { name: "Pass" })
+    .check();
+  await tester
+    .getByRole("group", { name: "Step 2: Press save" })
+    .getByRole("radio", { name: "Pass" })
+    .check();
+  await tester
+    .getByRole("group", { name: "Does the original problem still occur?" })
+    .getByRole("radio", { name: "No" })
+    .check();
+  await tester.getByRole("button", { name: "Save verification" }).click();
   await expect(tester.locator("main > p").first()).toContainText("Verified");
+  await expect(
+    tester.getByText("Verification passed: 2/2 steps").first(),
+  ).toBeVisible();
+  await expect(tester.getByText("Earlier attempts (1)")).toBeVisible();
   const downloadReady = tester.waitForEvent("download");
   await tester.getByRole("link", { name: "Download PDF report" }).click();
   const download = await downloadReady;

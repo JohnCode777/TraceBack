@@ -103,6 +103,13 @@ export async function deleteProject(
         select: { id: true },
       })
     ).map((bug) => bug.id);
+    if (
+      await tx.verificationAttempt.count({ where: { bugId: { in: bugIds } } })
+    )
+      throw new ProjectError(
+        "Project has immutable verification records and cannot be deleted.",
+        409,
+      );
     await tx.statusChange.deleteMany({ where: { bugId: { in: bugIds } } });
     await tx.note.deleteMany({ where: { bugId: { in: bugIds } } });
     await tx.reproStep.deleteMany({ where: { bugId: { in: bugIds } } });

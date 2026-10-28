@@ -16,6 +16,12 @@ beforeEach(() => {
   database = new DatabaseSync(":memory:");
   database.exec("PRAGMA foreign_keys = ON");
   database.exec(migration);
+  database.exec(
+    readFileSync(
+      "prisma/migrations/20261028120000_verification_checklist/migration.sql",
+      "utf8",
+    ),
+  );
   database.exec(`
     INSERT INTO "User" (id, name, email, passwordHash) VALUES ('u1', 'Fake User', 'fake@example.test', 'fake-hash');
     INSERT INTO "Project" (id, name, key) VALUES ('p1', 'One', 'ONE'), ('p2', 'Two', 'TWO');
@@ -62,6 +68,17 @@ describe("initial migration", () => {
     expect(() =>
       database.exec(`DELETE FROM "StatusChange" WHERE id = 's1'`),
     ).toThrow(/StatusChange is immutable/);
+  });
+  it("enforces immutable verification attempts and step results", () => {
+    database.exec(`INSERT INTO "VerificationAttempt" (id, bugId, verifierId, problemOccurs, outcome) VALUES ('v1', 'b1', 'u1', 'No', 'verified');
+      INSERT INTO "VerificationStepResult" (id, attemptId, position, instruction, result) VALUES ('r1', 'v1', 1, 'Open form', 'Pass');`);
+    for (const statement of [
+      `UPDATE "VerificationAttempt" SET outcome = 'reopened' WHERE id = 'v1'`,
+      `DELETE FROM "VerificationAttempt" WHERE id = 'v1'`,
+      `UPDATE "VerificationStepResult" SET result = 'Fail' WHERE id = 'r1'`,
+      `DELETE FROM "VerificationStepResult" WHERE id = 'r1'`,
+    ])
+      expect(() => database.exec(statement)).toThrow(/immutable/);
   });
 });
 

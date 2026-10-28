@@ -44,6 +44,12 @@ beforeEach(async () => {
   sqlite.exec(
     readFileSync("prisma/migrations/20261025120000_init/migration.sql", "utf8"),
   );
+  sqlite.exec(
+    readFileSync(
+      "prisma/migrations/20261028120000_verification_checklist/migration.sql",
+      "utf8",
+    ),
+  );
   sqlite.close();
   client = new PrismaClient({
     adapter: new PrismaLibSql({ url: `file:${path}` }),
@@ -331,7 +337,20 @@ describe("bug workflow integration", () => {
       "project",
       bug.id,
       tester,
-      { to: "Investigating", comment: "Still failing" },
+      {
+        to: "Investigating",
+        comment: "Still failing",
+        verification: {
+          steps: (
+            await client.reproStep.findMany({ where: { bugId: bug.id } })
+          ).map((step) => ({
+            stepId: step.id,
+            result: "Fail" as const,
+            comment: "Still failing",
+          })),
+          problemOccurs: "Yes",
+        },
+      },
       client,
     );
     await transitionBug(
@@ -346,7 +365,21 @@ describe("bug workflow integration", () => {
       },
       client,
     );
-    await transitionBug("project", bug.id, tester, { to: "Verified" }, client);
+    await transitionBug(
+      "project",
+      bug.id,
+      tester,
+      {
+        to: "Verified",
+        verification: {
+          steps: (
+            await client.reproStep.findMany({ where: { bugId: bug.id } })
+          ).map((step) => ({ stepId: step.id, result: "Pass" as const })),
+          problemOccurs: "No",
+        },
+      },
+      client,
+    );
     const regressed = await transitionBug(
       "project",
       bug.id,
@@ -369,6 +402,24 @@ describe("bug workflow integration", () => {
       "Fixed:Verified",
       "Verified:Investigating",
     ]);
+    const attempts = await client.verificationAttempt.findMany({
+      where: { bugId: bug.id },
+      include: { steps: { orderBy: { position: "asc" } } },
+      orderBy: { createdAt: "asc" },
+    });
+    expect(attempts).toHaveLength(2);
+    expect(attempts.map((attempt) => attempt.outcome)).toEqual([
+      "reopened",
+      "verified",
+    ]);
+    expect(attempts[0].steps.map((step) => step.result)).toEqual([
+      "Fail",
+      "Fail",
+    ]);
+    expect(attempts[1].steps.map((step) => step.result)).toEqual([
+      "Pass",
+      "Pass",
+    ]);
     await expect(
       client.statusChange.update({
         where: { id: history[0].id },
@@ -378,6 +429,95 @@ describe("bug workflow integration", () => {
     await expect(
       client.statusChange.delete({ where: { id: history[0].id } }),
     ).rejects.toThrow();
+  });
+
+  it("refuses incomplete, failing and still-occurring replays without recording attempts", async () => {
+    const bug = await createBug("project", tester, input, client);
+    await transitionBug(
+      "project",
+      bug.id,
+      developer,
+      { to: "Investigating" },
+      client,
+    );
+    await transitionBug(
+      "project",
+      bug.id,
+      developer,
+      {
+        to: "Fixed",
+        resolutionSummary: "Corrected state update",
+        rootCauseCategory: "Logic error",
+        reproducedByDev: "Yes",
+      },
+      client,
+    );
+    const steps = await client.reproStep.findMany({
+      where: { bugId: bug.id },
+      orderBy: { position: "asc" },
+    });
+    const passing = steps.map((step) => ({
+      stepId: step.id,
+      result: "Pass" as const,
+    }));
+    await expect(
+      transitionBug(
+        "project",
+        bug.id,
+        tester,
+        {
+          to: "Verified",
+          verification: { steps: passing.slice(0, 1), problemOccurs: "No" },
+        },
+        client,
+      ),
+    ).rejects.toThrow(/every reproduction step/);
+    await expect(
+      transitionBug(
+        "project",
+        bug.id,
+        tester,
+        {
+          to: "Verified",
+          verification: {
+            steps: [{ ...passing[0], result: "Fail" }, passing[1]],
+            problemOccurs: "No",
+          },
+        },
+        client,
+      ),
+    ).rejects.toThrow(/step 1 failed/);
+    await expect(
+      transitionBug(
+        "project",
+        bug.id,
+        tester,
+        {
+          to: "Verified",
+          verification: { steps: passing, problemOccurs: "Yes" },
+        },
+        client,
+      ),
+    ).rejects.toThrow(/still occurs/);
+    await expect(
+      transitionBug(
+        "project",
+        bug.id,
+        tester,
+        {
+          to: "Investigating",
+          comment: "Trying to reopen a passing replay",
+          verification: { steps: passing, problemOccurs: "No" },
+        },
+        client,
+      ),
+    ).rejects.toThrow(/requires a failed step/);
+    expect(
+      await client.verificationAttempt.count({ where: { bugId: bug.id } }),
+    ).toBe(0);
+    expect(
+      (await client.bug.findUniqueOrThrow({ where: { id: bug.id } })).status,
+    ).toBe("Fixed");
   });
 
   it("prevents cross-project area and assignment references", async () => {

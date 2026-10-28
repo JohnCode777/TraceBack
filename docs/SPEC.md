@@ -20,7 +20,7 @@ Roles are per project (a user can hold different roles in different projects).
 | Download report | Yes | Yes | Yes |
 
 A user can never see a project they are not a member of. Non-members receive a 404, not a 403.
-Projects must be archived before an Admin can delete them. Deletion permanently removes the project and its areas, members, bugs, reproduction steps, notes and status history in one transaction.
+Projects must be archived before an Admin can delete them. An archived project with a verification attempt cannot be deleted, because verification records are permanent. Otherwise deletion removes the project and its areas, members, bugs, reproduction steps, notes and status history in one transaction.
 
 ### 5.2 Bug lifecycle (state machine)
 
@@ -28,13 +28,15 @@ Projects must be archived before an Admin can delete them. Deletion permanently 
 | --- | --- | --- | --- |
 | Submitted | Investigating | Developer, Admin | none |
 | Investigating | Fixed | Developer, Admin | resolution summary, root cause category, reproduced-by-developer value |
-| Fixed | Verified | Tester, Admin | optional comment |
-| Fixed | Investigating (Reopen) | Tester, Admin | reason; increments `reopenCount` |
+| Fixed | Verified | Tester, Admin | completed verification checklist: every original step Pass and original problem No |
+| Fixed | Investigating (Reopen) | Tester, Admin | completed checklist with a failed step or original problem Yes, plus reason; increments `reopenCount` |
 | Verified | Investigating (Regression) | Tester, Admin | reason; increments `reopenCount` |
 
 All other transitions are rejected with a clear error. There is **no path** from Submitted or Investigating to Verified. The developer who marked a bug Fixed cannot be the one who verifies it unless they are an Admin.
 
 Every transition writes an **immutable** `StatusChange` record: bug, from, to, actor, comment, timestamp. Records are never updated or deleted while the project exists; deleting an archived project also removes its status history.
+
+On Fixed bugs, Verify opens the ordered reproduction steps. The verifier marks each Pass or Fail, may comment on each, then must answer “Does the original problem still occur?” with Yes or No and may comment. The card shows checked-step progress. A missing mark, any Fail, or Yes prevents Fixed → Verified. A failing replay offers Reopen with a reason suggested from failed steps and the final answer; the verifier may edit it. Fixed → Verified and Fixed → Investigating each save an immutable verification attempt in the same transaction as the status change. A bug may have several attempts over reopen cycles. The bug detail shows the latest attempt and earlier history; the timeline shows a short outcome summary. Verified → Investigating remains a reasoned regression and does not create a new checklist attempt.
 
 ### 5.3 Fields
 
@@ -89,9 +91,14 @@ Bug             id, projectId, number, title, severity, status, reproducibility,
 ReproStep       id, bugId, position, instruction
 Note            id, bugId, authorId, type, body, editedAt, createdAt
 StatusChange    id, bugId, fromStatus, toStatus, actorId, comment, createdAt
+VerificationAttempt id, bugId, verifierId, createdAt, problemOccurs (Yes/No),
+                    finalComment, outcome (verified/reopened)
+VerificationStepResult id, attemptId, position, instruction, result (Pass/Fail), comment
 ```
 
 **Indexes:** unique `(projectId, number)`; `(projectId, status)`; `(projectId, severity)`; `(projectId, areaId)`; `(projectId, createdAt)`.
+
+Verification attempts and step results are append-only, including a snapshot of each step's instruction and order. SQLite triggers reject updates and deletes. An index on `(bugId, createdAt)` supports the attempt history; `(attemptId, position)` is unique.
 
 Bug number allocation must be race-safe (use a transaction that increments `nextBugNumber`).
 
@@ -116,7 +123,7 @@ Each chart segment links to the bug list pre-filtered. Stats include a project f
 6. Investigation notes grouped by type
 7. Root cause, resolution, fix reference, reproduced-by-developer
 8. Status history with time spent in each state
-9. Verification record (who, when)
+9. Verification record: every checklist attempt with per-step Pass/Fail and comments, final answer and comment, verifier and time. Existing Verified bugs without an attempt show “No checklist recorded”.
 10. Footer: generated timestamp and generating user
 
 Only project members can generate. The report must handle long text, page breaks and non-ASCII characters.

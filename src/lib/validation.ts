@@ -57,6 +57,21 @@ export const transitionSchema = z.object({
   rootCauseCategory: rootCause.optional(),
   reproducedByDev: reproducedByDev.optional(),
   fixReference: optionalText,
+  verification: z
+    .object({
+      steps: z
+        .array(
+          z.object({
+            stepId: z.string().min(1).max(128),
+            result: z.enum(["Pass", "Fail"]),
+            comment: z.string().trim().max(10000).optional(),
+          }),
+        )
+        .max(50),
+      problemOccurs: z.enum(["Yes", "No"]).optional(),
+      finalComment: z.string().trim().max(10000).optional(),
+    })
+    .optional(),
 });
 export const noteSchema = z.object({
   type: noteType,

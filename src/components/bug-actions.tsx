@@ -69,11 +69,9 @@ export function BugActions({
       ? ["Investigating"]
       : status === "Investigating" && canDev
         ? ["Fixed"]
-        : status === "Fixed" && canTest
-          ? ["Verified", "Investigating"]
-          : status === "Verified" && canTest
-            ? ["Investigating"]
-            : [];
+        : status === "Verified" && canTest
+          ? ["Investigating"]
+          : [];
   return (
     <section className="grid gap-5 md:grid-cols-2">
       {canDev && (
