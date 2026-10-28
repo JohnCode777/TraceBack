@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import PDFDocument from "pdfkit";
 import { evaluate, type CompletenessInput } from "./completeness";
+import { isEditLog } from "./edit-log";
 
 export type ReportData = CompletenessInput & {
   bugId: string;
@@ -38,6 +39,13 @@ const duration = (from: Date, to: Date) =>
 const font = join(process.cwd(), "assets", "fonts", "DejaVuSans.ttf");
 const bold = join(process.cwd(), "assets", "fonts", "DejaVuSans-Bold.ttf");
 
+export function investigationNotes(notes: ReportData["notes"]) {
+  return Map.groupBy(
+    notes.filter((note) => !isEditLog(note.body)),
+    (note) => note.type,
+  );
+}
+
 export async function generateReport(report: ReportData): Promise<Buffer> {
   const doc = new PDFDocument({
     size: "A4",
@@ -57,13 +65,19 @@ export async function generateReport(report: ReportData): Promise<Buffer> {
     .registerFont("bold", bold)
     .font("body")
     .fontSize(10);
+  // Fontkit supports boolean feature overrides; PDFKit's public type only
+  // lists feature tags. Disable optional ligatures so each letter is embedded.
+  const noLigatures = {
+    liga: false,
+    clig: false,
+  } as unknown as PDFKit.Mixins.TextOptions["features"];
   const line = (label: string, content?: string | null, tone?: string) => {
     doc
       .font("bold")
-      .text(`${label}: `, { continued: true })
+      .text(`${label}: `, { continued: true, features: noLigatures })
       .font("body")
       .fillColor(tone ?? "#27314c")
-      .text(value(content));
+      .text(value(content), { features: noLigatures });
     doc.fillColor("#27314c");
     doc.moveDown(0.3);
   };
@@ -74,7 +88,7 @@ export async function generateReport(report: ReportData): Promise<Buffer> {
       .font("bold")
       .fontSize(13)
       .fillColor("#4530a0")
-      .text(heading)
+      .text(heading, { features: noLigatures })
       .moveDown(0.4)
       .font("body")
       .fontSize(10)
@@ -85,12 +99,15 @@ export async function generateReport(report: ReportData): Promise<Buffer> {
     .font("bold")
     .fontSize(10)
     .fillColor("#ffffff")
-    .text("TRACEBACK  /  INVESTIGATION REPORT", 48, 12, { lineBreak: false });
+    .text("TRACEBACK  /  INVESTIGATION REPORT", 48, 12, {
+      lineBreak: false,
+      features: noLigatures,
+    });
   doc
     .font("bold")
     .fontSize(18)
     .fillColor("#25215e")
-    .text(`${report.bugId}: ${report.title}`)
+    .text(`${report.bugId}: ${report.title}`, { features: noLigatures })
     .fontSize(10)
     .fillColor("#27314c")
     .moveDown(0.5);
@@ -123,7 +140,7 @@ export async function generateReport(report: ReportData): Promise<Buffer> {
   line("Created", when(report.createdAt));
 
   section("Summary and environment");
-  line("Context", report.extraContext);
+  line("Extra context", report.extraContext);
   line("Environment", report.envType);
   line("OS", [report.osName, report.osVersion].filter(Boolean).join(" "));
   line("Browser or device", report.browserOrDevice);
@@ -131,13 +148,14 @@ export async function generateReport(report: ReportData): Promise<Buffer> {
   line("Reproducibility", report.reproducibility);
 
   section("Reproduction steps");
-  if (!report.steps?.length) doc.text("No steps supplied.");
+  if (!report.steps?.length)
+    doc.text("No steps supplied.", { features: noLigatures });
   else
     report.steps.forEach((step, index) =>
       doc
         .text(
           `${index + 1}. ${typeof step === "string" ? step : step.instruction}`,
-          { indent: 12 },
+          { indent: 12, features: noLigatures },
         )
         .moveDown(0.3),
     );
@@ -149,21 +167,28 @@ export async function generateReport(report: ReportData): Promise<Buffer> {
   section("Completeness");
   const result = evaluate(report);
   line("Score", `${result.score}/100 (${result.level})`);
-  if (!result.missing.length) doc.text("No outstanding gaps.");
+  if (!result.missing.length)
+    doc.text("No outstanding gaps.", { features: noLigatures });
   else
     result.missing.forEach((gap) =>
-      doc.text(`${gap.rule}: ${gap.suggestion}`, { indent: 12 }).moveDown(0.2),
+      doc
+        .text(`${gap.rule}: ${gap.suggestion}`, {
+          indent: 12,
+          features: noLigatures,
+        })
+        .moveDown(0.2),
     );
 
   section("Investigation notes");
-  if (!report.notes.length) doc.text("No notes.");
-  const groups = Map.groupBy(report.notes, (note) => note.type);
+  const groups = investigationNotes(report.notes);
+  if (!groups.size) doc.text("No notes.", { features: noLigatures });
   for (const [type, notes] of groups) {
-    doc.font("bold").text(type).font("body");
+    doc.font("bold").text(type, { features: noLigatures }).font("body");
     for (const note of notes)
       doc
         .text(`${note.author}, ${when(note.createdAt)}: ${note.body}`, {
           indent: 12,
+          features: noLigatures,
         })
         .moveDown(0.4);
   }
@@ -180,12 +205,14 @@ export async function generateReport(report: ReportData): Promise<Buffer> {
     doc
       .text(
         `${change.fromStatus}: ${duration(enteredAt, change.createdAt)}; ${change.toStatus} by ${change.actor} at ${when(change.createdAt)}${change.comment ? ` — ${change.comment}` : ""}`,
+        { features: noLigatures },
       )
       .moveDown(0.35);
     enteredAt = change.createdAt;
   }
   doc.text(
     `${report.status}: ${duration(enteredAt, report.generatedAt)} as of generation.`,
+    { features: noLigatures },
   );
 
   section("Verification record");
@@ -214,7 +241,12 @@ export async function generateReport(report: ReportData): Promise<Buffer> {
         `Generated ${when(report.generatedAt)} by ${report.generatedBy}  •  Page ${page + 1} of ${range.count}`,
         48,
         795,
-        { width: 500, align: "center", lineBreak: false },
+        {
+          width: 500,
+          align: "center",
+          lineBreak: false,
+          features: noLigatures,
+        },
       );
   }
   doc.end();

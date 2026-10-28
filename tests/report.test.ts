@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { generateReport, type ReportData } from "../src/lib/report";
+import {
+  generateReport,
+  investigationNotes,
+  type ReportData,
+} from "../src/lib/report";
 
 export const report: ReportData = {
   bugId: "TB-142",
@@ -79,5 +83,24 @@ describe("PDF generation", () => {
     expect(
       (pdf.toString("latin1").match(/\/Type \/Page\b/g) ?? []).length,
     ).toBe(1);
+  });
+  it("keeps edit logs out of Investigation notes", () => {
+    const edit = {
+      type: "Observation",
+      body: '[Edit log]\nassigneeId: null → "seed-user-developer-1"',
+      author: "Developer",
+      createdAt: new Date("2026-01-01T03:00:00Z"),
+    };
+    const groups = investigationNotes([...report.notes, edit]);
+    expect(groups.get("Observation")).toEqual(report.notes);
+    expect(investigationNotes([edit]).size).toBe(0);
+  });
+  it("embeds verification labels without optional fi ligatures", async () => {
+    const pdf = await generateReport({
+      ...report,
+      extraContext: "Extra context fixture",
+      notes: [],
+    });
+    expect(pdf.toString("latin1")).not.toContain("<0066 0069>");
   });
 });
