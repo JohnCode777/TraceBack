@@ -69,3 +69,8 @@
 
 1. **Display-only edit entries.** Keep the existing reserved Observation note format for edit audit data and its edit protection. The bug timeline recognizes that format as an Edit entry, resolves assignee and area IDs to available names, and shows readable field labels. Former users and areas get descriptive fallbacks instead of raw IDs. Historical no-op entries are hidden without changing their stored records. No schema or permission changes are needed.
 2. **No-op assignment.** A repeated assignment to the same user now returns the existing bug without writing another audit note. Report edits already skip unchanged values. Integration tests cover both paths, and the browser flow checks the new timeline text.
+
+## Session 6 PDF edit-log follow-up
+
+1. **Investigation notes.** Reserved `[Edit log]` notes remain in the database and timeline, but the PDF excludes them from notes grouped by type. The report keeps its existing section order and does not add an Edit history section.
+2. **PDF text shaping.** DejaVu Sans combines the letters “fi” into an optional ligature in “Verification” and “Verified.” PDF text now disables optional `liga` and `clig` substitutions so those letters remain separate in the embedded font. The summary label reads “Extra context.” PDF output was checked with text extraction and a rendered page.

@@ -92,3 +92,11 @@
 - Checks: lint, type-check, 125 unit/integration tests, production build, formatting and both Playwright flows passed locally.
 - Partial: none within this follow-up.
 - Known broken: none found in local checks.
+
+## Session 6 PDF edit-log follow-up
+
+- Done: reserved edit logs are omitted from PDF Investigation notes, while the distinct Edit timeline display and no-op guards remain in place. The PDF label is “Extra context,” and optional font ligatures are disabled for reliable verification labels.
+- Done: tests cover PDF note filtering and font mapping; rendered output and extracted text show complete “Verification record,” “Verified by” and “Verified at” labels.
+- Checks: lint, type-check, 127 unit/integration tests, production build, formatting, fresh migration and seed, and both Playwright flows passed locally.
+- Partial: none within this follow-up.
+- Known broken: none found in local checks.
