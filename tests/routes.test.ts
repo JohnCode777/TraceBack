@@ -52,6 +52,12 @@ beforeAll(async () => {
   sqlite.exec(
     readFileSync("prisma/migrations/20261025120000_init/migration.sql", "utf8"),
   );
+  sqlite.exec(
+    readFileSync(
+      "prisma/migrations/20261028120000_verification_checklist/migration.sql",
+      "utf8",
+    ),
+  );
   sqlite.close();
   process.env.DATABASE_URL = `file:${path}`;
   client = (await import("../src/lib/db")).db;
@@ -219,6 +225,90 @@ describe("authenticated bug routes", () => {
       expect((await handler(request(method, suffix, data), ctx())).status).toBe(
         404,
       );
+  });
+
+  it("returns 404 to nonmembers on verification and enforces the checklist on the route", async () => {
+    const fixed = await client.bug.create({
+      data: {
+        projectId: "project",
+        number: 99,
+        title: "Verification route bug",
+        reporterId: "tester",
+        status: "Fixed",
+        steps: {
+          create: [
+            { position: 1, instruction: "Open form" },
+            { position: 2, instruction: "Press save" },
+          ],
+        },
+        statusChanges: {
+          create: {
+            fromStatus: "Investigating",
+            toStatus: "Fixed",
+            actorId: "developer",
+          },
+        },
+      },
+      include: { steps: { orderBy: { position: "asc" } } },
+    });
+    const verifyCtx = {
+      params: Promise.resolve({
+        projectId: "project",
+        bugId: fixed.id,
+        noteId,
+      }),
+    };
+    const replay = {
+      to: "Verified",
+      verification: {
+        steps: fixed.steps.map((step) => ({ stepId: step.id, result: "Pass" })),
+        problemOccurs: "No",
+      },
+    };
+    activeUser = "outsider";
+    expect(
+      (
+        await transitionPost(
+          request("POST", `/${fixed.id}/transition`, replay),
+          verifyCtx,
+        )
+      ).status,
+    ).toBe(404);
+    activeUser = "developer";
+    expect(
+      (
+        await transitionPost(
+          request("POST", `/${fixed.id}/transition`, replay),
+          verifyCtx,
+        )
+      ).status,
+    ).toBe(403);
+    activeUser = "tester";
+    expect(
+      (
+        await transitionPost(
+          request("POST", `/${fixed.id}/transition`, {
+            ...replay,
+            verification: {
+              ...replay.verification,
+              steps: replay.verification.steps.slice(0, 1),
+            },
+          }),
+          verifyCtx,
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await transitionPost(
+          request("POST", `/${fixed.id}/transition`, replay),
+          verifyCtx,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      await client.verificationAttempt.count({ where: { bugId: fixed.id } }),
+    ).toBe(1);
   });
 
   it("requires authentication for public-role actions", async () => {

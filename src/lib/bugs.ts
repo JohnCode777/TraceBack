@@ -5,6 +5,7 @@ import { evaluate } from "./completeness";
 import { AppError } from "./errors";
 import { authorizeBug, type Actor } from "./policy";
 import { decideTransition, type Status } from "./state-machine";
+import { evaluateReplay } from "./verification";
 import {
   createBugSchema,
   editBugSchema,
@@ -113,6 +114,13 @@ export async function getBug(
       statusChanges: {
         include: { actor: { select: { name: true } } },
         orderBy: { createdAt: "asc" },
+      },
+      verificationAttempts: {
+        include: {
+          verifier: { select: { name: true } },
+          steps: { orderBy: { position: "asc" } },
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       },
     },
   });
@@ -311,7 +319,10 @@ export async function transitionBug(
   authorizeBug(actor, "transition");
   await projectForWrite(client, projectId);
   return client.$transaction(async (tx) => {
-    const bug = await tx.bug.findFirst({ where: { id: bugId, projectId } });
+    const bug = await tx.bug.findFirst({
+      where: { id: bugId, projectId },
+      include: { steps: { orderBy: { position: "asc" } } },
+    });
     if (!bug) throw new AppError("Not found", 404);
     const lastFix = await tx.statusChange.findFirst({
       where: { bugId, toStatus: "Fixed" },
@@ -328,6 +339,15 @@ export async function transitionBug(
       rootCauseCategory: input.rootCauseCategory ?? bug.rootCauseCategory,
       reproducedByDev: input.reproducedByDev ?? bug.reproducedByDev,
     });
+    const replay =
+      bug.status === "Fixed" &&
+      (input.to === "Verified" || input.to === "Investigating")
+        ? evaluateReplay(
+            bug.steps,
+            input.verification,
+            input.to === "Verified" ? "verified" : "reopened",
+          )
+        : null;
     const now = new Date();
     const changed = await tx.bug.updateMany({
       where: { id: bugId, projectId, status: bug.status },
@@ -363,6 +383,19 @@ export async function transitionBug(
         createdAt: now,
       },
     });
+    if (replay) {
+      await tx.verificationAttempt.create({
+        data: {
+          bugId,
+          verifierId: actor.id,
+          createdAt: now,
+          problemOccurs: input.verification!.problemOccurs,
+          finalComment: input.verification!.finalComment?.trim() || null,
+          outcome: input.to === "Verified" ? "verified" : "reopened",
+          steps: { create: replay.results },
+        },
+      });
+    }
     return tx.bug.findUniqueOrThrow({ where: { id: bugId } });
   });
 }

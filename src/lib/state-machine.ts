@@ -1,4 +1,5 @@
 import { AppError } from "./errors";
+import { can } from "./policy";
 
 export const statuses = [
   "Submitted",
@@ -34,10 +35,17 @@ export function decideTransition(input: TransitionInput): { reopen: boolean } {
   const { from, to, role } = input;
   if (!transitions.some(([a, b]) => a === from && b === to))
     throw new AppError(`Cannot move a bug from ${from} to ${to}`, 400);
-  const developerMove =
-    (from === "Submitted" && to === "Investigating") ||
-    (from === "Investigating" && to === "Fixed");
-  if (role !== "Admin" && role !== (developerMove ? "Developer" : "Tester"))
+  const action =
+    from === "Submitted"
+      ? "investigate"
+      : to === "Fixed"
+        ? "fix"
+        : to === "Verified"
+          ? "verify"
+          : from === "Verified"
+            ? "regression"
+            : "reopen";
+  if (!can(role, action))
     throw new AppError("Role cannot make this transition", 403);
   if (from === "Investigating" && to === "Fixed") {
     if (
@@ -52,8 +60,9 @@ export function decideTransition(input: TransitionInput): { reopen: boolean } {
   }
   if (
     to === "Verified" &&
-    role !== "Admin" &&
-    input.fixedById === input.actorId
+    !can(role, "verify", {
+      isFixAuthor: input.fixedById === input.actorId,
+    })
   )
     throw new AppError(
       "The developer who fixed this bug cannot verify it",

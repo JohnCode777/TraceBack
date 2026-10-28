@@ -20,6 +20,7 @@ model User {
   assignedBugs         Bug[]          @relation("Assignee")
   notes                Note[]
   statusChanges        StatusChange[]
+  verificationAttempts VerificationAttempt[]
 }
 
 model Project {
@@ -92,6 +93,7 @@ model Bug {
   steps               ReproStep[]
   notes               Note[]
   statusChanges       StatusChange[]
+  verificationAttempts VerificationAttempt[]
 
   @@unique([projectId, number])
   @@index([projectId, status])
@@ -140,6 +142,33 @@ model StatusChange {
   actor      User     @relation(fields: [actorId], references: [id], onDelete: Restrict)
 
   @@index([bugId, createdAt])
+}
+
+model VerificationAttempt {
+  id            String                   @id @default(cuid())
+  bugId         String
+  verifierId    String
+  createdAt     DateTime                 @default(now())
+  problemOccurs String
+  finalComment  String?
+  outcome       String
+  bug           Bug                      @relation(fields: [bugId], references: [id], onDelete: Restrict)
+  verifier      User                     @relation(fields: [verifierId], references: [id], onDelete: Restrict)
+  steps         VerificationStepResult[]
+
+  @@index([bugId, createdAt])
+}
+
+model VerificationStepResult {
+  id          String              @id @default(cuid())
+  attemptId   String
+  position    Int
+  instruction String
+  result      String
+  comment     String?
+  attempt     VerificationAttempt @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+
+  @@unique([attemptId, position])
 }
 
 model LoginThrottle {
