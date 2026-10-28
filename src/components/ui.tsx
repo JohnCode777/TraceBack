@@ -51,6 +51,9 @@ export function Icon({
       </>
     ),
     arrow: <path d="M5 12h14m-6-6 6 6-6 6" />,
+    edit: (
+      <path d="m16 4 4 4M4 20l4.5-1 11-11a2.83 2.83 0 0 0-4-4l-11 11L4 20z" />
+    ),
     spark: (
       <path d="m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z" />
     ),

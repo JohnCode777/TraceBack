@@ -59,6 +59,14 @@ test("tester files, developer fixes, tester verifies and downloads a report", as
 
   await login(developer, "developer1@example.test");
   await developer.goto(bugUrl);
+  await developer
+    .locator('select[name="assigneeId"]')
+    .selectOption({ label: "Demo Developer 1" });
+  await developer.getByRole("button", { name: "Assign", exact: true }).click();
+  await expect(
+    developer.getByText("Assigned to Demo Developer 1", { exact: true }),
+  ).toBeVisible();
+  await expect(developer.getByText("Edit", { exact: true })).toHaveCount(1);
   await developer.getByRole("button", { name: "Update status" }).click();
   await expect(developer.locator("main > p").first()).toContainText(
     "Investigating",

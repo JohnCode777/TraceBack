@@ -214,6 +214,12 @@ describe("bug workflow integration", () => {
       (await assignBug("project", bug.id, developer, developer.id, client))
         .assigneeId,
     ).toBe(developer.id);
+    await assignBug("project", bug.id, developer, developer.id, client);
+    expect(
+      await client.note.count({
+        where: { bugId: bug.id, body: { startsWith: "[Edit log]" } },
+      }),
+    ).toBe(1);
     const edited = await editBug(
       "project",
       bug.id,
@@ -222,6 +228,13 @@ describe("bug workflow integration", () => {
       client,
     );
     expect(edited.title).toBe("Saving edits fails");
+    await editBug(
+      "project",
+      bug.id,
+      tester,
+      { title: "Saving edits fails" },
+      client,
+    );
     expect(
       await client.note.count({
         where: { bugId: bug.id, body: { startsWith: "[Edit log]" } },

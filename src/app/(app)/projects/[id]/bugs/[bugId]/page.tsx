@@ -8,6 +8,7 @@ import { projectActor } from "@/lib/request";
 import { BugActions, NoteEditor } from "@/components/bug-actions";
 import { BugForm } from "@/components/bug-form";
 import { evaluate } from "@/lib/completeness";
+import { describeEditChanges, isEditLog, parseEditLog } from "@/lib/edit-log";
 import {
   Badge,
   Completeness,
@@ -68,25 +69,53 @@ export default async function BugDetailPage({ params }: Props) {
   } catch {
     notFound();
   }
-  const [areas, developers] = await Promise.all([
+  const editChanges = new Map(
+    bug.notes
+      .filter((note) => isEditLog(note.body))
+      .map((note) => [note.id, parseEditLog(note.body)]),
+  );
+  const assigneeIds = [
+    ...new Set(
+      [...editChanges.values()].flatMap((changes) =>
+        changes
+          .filter((change) => change.field === "assigneeId")
+          .flatMap((change) => [change.before, change.after])
+          .filter((value): value is string => typeof value === "string"),
+      ),
+    ),
+  ];
+  const [areas, developers, assignees] = await Promise.all([
     db.area.findMany({ where: { projectId } }),
     db.projectMember.findMany({
       where: { projectId, role: "Developer" },
       include: { user: { select: { name: true } } },
     }),
+    db.user.findMany({
+      where: { id: { in: assigneeIds } },
+      select: { id: true, name: true },
+    }),
   ]);
+  const editNames = {
+    users: new Map(assignees.map((user) => [user.id, user.name])),
+    areas: new Map(areas.map((area) => [area.id, area.name])),
+  };
   const canEdit =
     actor.role === "Admin" ||
     (actor.role === "Tester" &&
       bug.reporterId === actor.id &&
       !["Fixed", "Verified"].includes(bug.status));
   const activity = [
-    ...bug.notes.map((n) => ({
-      kind: "note" as const,
-      at: n.createdAt,
-      id: n.id,
-      item: n,
-    })),
+    ...bug.notes
+      .filter(
+        (note) =>
+          !isEditLog(note.body) || (editChanges.get(note.id)?.length ?? 0) > 0,
+      )
+      .map((n) => ({
+        kind: isEditLog(n.body) ? ("edit" as const) : ("note" as const),
+        at: n.createdAt,
+        id: n.id,
+        item: n,
+      })),
     ...bug.statusChanges.map((s) => ({
       kind: "status" as const,
       at: s.createdAt,
@@ -245,7 +274,7 @@ export default async function BugDetailPage({ params }: Props) {
             {activity.map((entry) => (
               <li
                 key={`${entry.kind}-${entry.id}`}
-                className="relative rounded-xl surface-soft p-4 before:absolute before:-left-[34px] before:top-4 before:h-4 before:w-4 before:rounded-full before:bg-violet-500 before:ring-4 before:ring-white"
+                className={`relative rounded-xl surface-soft p-4 before:absolute before:-left-[34px] before:top-4 before:h-4 before:w-4 before:rounded-full before:bg-violet-500 before:ring-4 before:ring-white ${entry.kind === "edit" ? "border-l-4 border-violet-500" : ""}`}
               >
                 <time className="text-sm text-slate-600">
                   {entry.at.toLocaleString("en-US", { timeZone: "UTC" })} UTC
@@ -257,6 +286,30 @@ export default async function BugDetailPage({ params }: Props) {
                     {entry.item.fromStatus} → {entry.item.toStatus}
                     {entry.item.comment ? `: ${entry.item.comment}` : ""}
                   </p>
+                ) : entry.kind === "edit" ? (
+                  <>
+                    <p className="mt-2 flex items-center gap-2">
+                      <span
+                        className="flex h-8 w-8 items-center justify-center rounded-full"
+                        style={{
+                          background: "var(--accent-soft)",
+                          color: "var(--accent)",
+                        }}
+                      >
+                        <Icon name="edit" className="h-4 w-4" />
+                      </span>
+                      <strong>{entry.item.author.name}</strong> ·{" "}
+                      <Badge tone="acceptable">Edit</Badge>
+                    </p>
+                    <ul className="mt-3 list-disc space-y-1 pl-12 text-sm">
+                      {describeEditChanges(
+                        editChanges.get(entry.id) ?? [],
+                        editNames,
+                      ).map((description, index) => (
+                        <li key={index}>{description}</li>
+                      ))}
+                    </ul>
+                  </>
                 ) : (
                   <>
                     <p className="mt-2 flex items-center gap-2">
@@ -283,16 +336,15 @@ export default async function BugDetailPage({ params }: Props) {
                         {entry.item.body}
                       </ReactMarkdown>
                     </div>
-                    {entry.item.authorId === actor.id &&
-                      !entry.item.body.startsWith("[Edit log]") && (
-                        <NoteEditor
-                          projectId={projectId}
-                          bugId={bugId}
-                          noteId={entry.item.id}
-                          type={entry.item.type}
-                          body={entry.item.body}
-                        />
-                      )}
+                    {entry.item.authorId === actor.id && (
+                      <NoteEditor
+                        projectId={projectId}
+                        bugId={bugId}
+                        noteId={entry.item.id}
+                        type={entry.item.type}
+                        body={entry.item.body}
+                      />
+                    )}
                   </>
                 )}
               </li>
