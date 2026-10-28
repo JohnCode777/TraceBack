@@ -14,6 +14,7 @@ export type Action =
   | "reopen"
   | "regression"
   | "manageProject"
+  | "deleteProject"
   | "manageMembers"
   | "viewDashboard"
   | "downloadReport";
@@ -31,6 +32,7 @@ const permissions: Record<Action, readonly Role[]> = {
   reopen: ["Tester", "Admin"],
   regression: ["Tester", "Admin"],
   manageProject: ["Admin"],
+  deleteProject: ["Admin"],
   manageMembers: ["Admin"],
   viewDashboard: ["Tester", "Developer", "Admin"],
   downloadReport: ["Tester", "Developer", "Admin"],
@@ -41,6 +43,7 @@ export type PolicyContext = {
   status?: string;
   isNonReporterField?: boolean;
   isFixAuthor?: boolean;
+  isArchived?: boolean;
 };
 
 export function can(
@@ -49,6 +52,7 @@ export function can(
   context: PolicyContext = {},
 ): boolean {
   if (!permissions[action].includes(role)) return false;
+  if (action === "deleteProject") return context.isArchived === true;
   if (action === "editOwnBug" && role === "Tester")
     return (
       context.isReporter === true &&

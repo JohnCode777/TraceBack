@@ -58,4 +58,22 @@ test("admin creates a project with usable areas and manages an unused area", asy
     page.getByRole("heading", { name: "Top problem areas" }),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "90 days: 1" })).toBeVisible();
+
+  await page.goto(`/projects/${projectId}/settings`);
+  await page.getByRole("button", { name: "Archive project" }).click();
+  await expect(page).toHaveURL(`/projects/${projectId}`, { timeout: 20_000 });
+  await page.goto(`/projects/${projectId}/settings`);
+  await expect(
+    page.getByRole("heading", { name: "Delete project" }),
+  ).toBeVisible();
+  await page.getByLabel(`Type ${key} to confirm`).fill("WRONG");
+  await page.getByRole("button", { name: "Delete project" }).click();
+  await expect(
+    page.getByText("Project key does not match.", { exact: true }),
+  ).toBeVisible();
+  await page.getByLabel(`Type ${key} to confirm`).fill(key);
+  await page.getByRole("button", { name: "Delete project" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Your projects" }),
+  ).toBeVisible({ timeout: 20_000 });
 });

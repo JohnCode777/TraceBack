@@ -15,6 +15,7 @@ const rows: [Action, Role[]][] = [
   ["reopen", ["Tester", "Admin"]],
   ["regression", ["Tester", "Admin"]],
   ["manageProject", ["Admin"]],
+  ["deleteProject", ["Admin"]],
   ["manageMembers", ["Admin"]],
   ["viewDashboard", ["Tester", "Developer", "Admin"]],
   ["downloadReport", ["Tester", "Developer", "Admin"]],
@@ -29,6 +30,7 @@ describe("Section 5.1 role matrix", () => {
           isReporter: true,
           status: "Submitted",
           isNonReporterField: true,
+          isArchived: true,
         };
         expect(can(role, action, context)).toBe(allowed.includes(role));
       }
@@ -44,6 +46,10 @@ describe("Section 5.1 role matrix", () => {
     expect(
       can("Tester", "editOwnBug", { isReporter: true, status: "Verified" }),
     ).toBe(false);
+  });
+  it("requires an archived project for deletion", () => {
+    expect(can("Admin", "deleteProject", { isArchived: false })).toBe(false);
+    expect(can("Admin", "deleteProject", { isArchived: true })).toBe(true);
   });
   it("limits developer edits to non-reporter fields", () => {
     expect(can("Developer", "editAnyBug", { isNonReporterField: false })).toBe(

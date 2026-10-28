@@ -6,6 +6,7 @@ import {
   areaIdSchema,
   createAreaSchema,
   createProjectSchema,
+  deleteProjectSchema,
   editProjectSchema,
   roleSchema,
 } from "./validators";
@@ -52,18 +53,65 @@ export async function requireProjectAction(
   userId: string,
   projectId: string,
   action: Action,
+  options: {
+    client?: Pick<Prisma.TransactionClient, "projectMember">;
+    allowArchived?: boolean;
+  } = {},
 ) {
-  const member = await db.projectMember.findUnique({
+  const member = await (options.client ?? db).projectMember.findUnique({
     where: { projectId_userId: { projectId, userId } },
     include: { project: true },
   });
   if (!member) throw new ProjectError("Project not found.", 404);
   const role = roleSchema.parse(member.role);
-  if (!can(role, action))
+  const isArchived = member.project.archivedAt !== null;
+  if (!can(role, action, { isArchived })) {
+    if (action === "deleteProject" && can(role, action, { isArchived: true }))
+      throw new ProjectError("Archive the project before deleting it.", 409);
     throw new ProjectError("You do not have permission to do this.", 403);
-  if (member.project.archivedAt)
+  }
+  if (member.project.archivedAt && !options.allowArchived)
     throw new ProjectError("Archived projects are read-only.", 409);
   return member.project;
+}
+
+export async function deleteProject(
+  userId: string,
+  projectId: string,
+  input: unknown,
+) {
+  const { confirmationKey } = deleteProjectSchema.parse(input);
+  return db.$transaction(async (tx) => {
+    const project = await requireProjectAction(
+      userId,
+      projectId,
+      "deleteProject",
+      { client: tx, allowArchived: true },
+    );
+    if (confirmationKey !== project.key)
+      throw new ProjectError("Project key does not match.", 400);
+
+    // The trigger permits history removal only during this archived-project
+    // transaction. A rollback restores both the marker and every child row.
+    await tx.project.update({
+      where: { id: projectId },
+      data: { nextBugNumber: 0 },
+    });
+    const bugIds = (
+      await tx.bug.findMany({
+        where: { projectId },
+        select: { id: true },
+      })
+    ).map((bug) => bug.id);
+    await tx.statusChange.deleteMany({ where: { bugId: { in: bugIds } } });
+    await tx.note.deleteMany({ where: { bugId: { in: bugIds } } });
+    await tx.reproStep.deleteMany({ where: { bugId: { in: bugIds } } });
+    await tx.bug.deleteMany({ where: { projectId } });
+    await tx.area.deleteMany({ where: { projectId } });
+    await tx.projectMember.deleteMany({ where: { projectId } });
+    await tx.project.delete({ where: { id: projectId } });
+    return { id: projectId };
+  });
 }
 
 export async function createProject(userId: string, input: unknown) {

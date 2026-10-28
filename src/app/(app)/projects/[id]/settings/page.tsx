@@ -9,6 +9,7 @@ import {
   removeAreaAction,
 } from "@/app/actions";
 import { ActionForm } from "@/components/action-form";
+import { DeleteProjectForm } from "@/components/delete-project-form";
 import { Badge } from "@/components/ui";
 import { db } from "@/lib/db";
 import { getProject, ProjectError } from "@/lib/projects";
@@ -64,7 +65,17 @@ export default async function SettingsPage({
       {messages.areaAdded && <p className="text-green-700">Area added.</p>}
       {messages.areaRemoved && <p className="text-green-700">Area removed.</p>}
       {project.archivedAt ? (
-        <div className="card">This project is archived and read-only.</div>
+        <>
+          <div className="card">This project is archived and read-only.</div>
+          <section className="card space-y-4 border-red-200">
+            <h2 className="text-lg font-semibold">Delete project</h2>
+            <p className="muted text-sm">
+              This permanently removes the project, its members, areas, bugs,
+              steps, notes and status history. This cannot be undone.
+            </p>
+            <DeleteProjectForm projectId={id} projectKey={project.key} />
+          </section>
+        </>
       ) : (
         <>
           <section className="card space-y-4">
