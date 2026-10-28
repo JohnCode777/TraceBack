@@ -46,6 +46,12 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  sqlite.exec(
+    readFileSync(
+      "prisma/migrations/20261028120000_verification_checklist/migration.sql",
+      "utf8",
+    ),
+  );
   sqlite.close();
   process.env.DATABASE_URL = `file:${path}`;
   client = (await import("../src/lib/db")).db;
@@ -170,6 +176,51 @@ describe("archived project deletion route", () => {
     expect(
       await client.project.findUnique({ where: { id: projectId } }),
     ).not.toBeNull();
+  });
+
+  it("preserves archived projects that contain immutable verification records", async () => {
+    const immutableProject = await client.project.create({
+      data: {
+        id: "immutable-project",
+        name: "Verification archive",
+        key: "IMM",
+        archivedAt: new Date(),
+        members: { create: { userId: "admin", role: "Admin" } },
+      },
+    });
+    const immutableBug = await client.bug.create({
+      data: {
+        projectId: immutableProject.id,
+        number: 1,
+        title: "Verified bug",
+        reporterId: "tester",
+        verificationAttempts: {
+          create: {
+            verifierId: "tester",
+            problemOccurs: "No",
+            outcome: "verified",
+            steps: {
+              create: { position: 1, instruction: "Open page", result: "Pass" },
+            },
+          },
+        },
+      },
+    });
+    const { deleteProject } = await import("../src/lib/projects");
+    await expect(
+      deleteProject("admin", immutableProject.id, { confirmationKey: "IMM" }),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringMatching(/immutable verification/),
+    });
+    expect(
+      await client.project.findUnique({ where: { id: immutableProject.id } }),
+    ).not.toBeNull();
+    expect(
+      await client.verificationAttempt.count({
+        where: { bugId: immutableBug.id },
+      }),
+    ).toBe(1);
   });
 
   it("deletes an archived project and all of its child records in one transaction", async () => {

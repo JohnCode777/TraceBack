@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   generateReport,
   investigationNotes,
+  verificationReportLines,
   type ReportData,
 } from "../src/lib/report";
 
@@ -102,5 +103,62 @@ describe("PDF generation", () => {
       notes: [],
     });
     expect(pdf.toString("latin1")).not.toContain("<0066 0069>");
+  });
+  it("includes every checklist attempt and a legacy fallback in the PDF section", async () => {
+    const attempts: NonNullable<ReportData["verificationAttempts"]> = [
+      {
+        verifierName: "Test Reporter",
+        createdAt: new Date("2026-01-03T00:00:00Z"),
+        outcome: "verified",
+        problemOccurs: "No",
+        finalComment: "Gone",
+        steps: [
+          {
+            position: 1,
+            instruction: "Open search",
+            result: "Pass",
+            comment: "Loaded",
+          },
+        ],
+      },
+      {
+        verifierName: "Test Reporter",
+        createdAt: new Date("2026-01-02T00:00:00Z"),
+        outcome: "reopened",
+        problemOccurs: "Yes",
+        finalComment: "Still missing",
+        steps: [
+          {
+            position: 1,
+            instruction: "Open search",
+            result: "Fail",
+            comment: "Missing",
+          },
+        ],
+      },
+    ];
+    expect(verificationReportLines(attempts)).toEqual(
+      expect.arrayContaining([
+        "Verification passed: 1/1 steps",
+        "Verification failed: step 1",
+        "Verifier: Test Reporter",
+        "Time: 2026-01-03 00:00 UTC",
+        "Step 1: Open search — Pass; Loaded",
+        "Step 1: Open search — Fail; Missing",
+        "Does the original problem still occur? No — Gone",
+        "Does the original problem still occur? Yes — Still missing",
+      ]),
+    );
+    expect(verificationReportLines([])).toEqual(["No checklist recorded"]);
+    for (const verificationAttempts of [attempts, []]) {
+      const pdf = await generateReport({
+        ...report,
+        extraContext: "Short context",
+        notes: [],
+        verificationAttempts,
+      });
+      expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+      expect(pdf.length).toBeGreaterThan(5_000);
+    }
   });
 });

@@ -18,6 +18,38 @@ import {
 } from "@/components/ui";
 import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Bug detail" };
+import { can } from "@/lib/policy";
+import { summarizeAttempt } from "@/lib/verification";
+import { VerificationChecklist } from "@/components/verification-checklist";
+
+type Attempt = Awaited<
+  ReturnType<typeof getBug>
+>["verificationAttempts"][number];
+
+function AttemptSummary({ attempt }: { attempt: Attempt }) {
+  return (
+    <div className="surface-soft mt-3 rounded-xl p-4">
+      <p className="font-semibold">{summarizeAttempt(attempt)}</p>
+      <p className="text-sm text-slate-600">
+        {attempt.verifier.name} ·{" "}
+        {attempt.createdAt.toLocaleString("en-US", { timeZone: "UTC" })} UTC
+      </p>
+      <ol className="mt-2 list-decimal pl-6">
+        {attempt.steps.map((step) => (
+          <li key={step.id}>
+            {step.instruction}: <strong>{step.result}</strong>
+            {step.comment ? ` — ${step.comment}` : ""}
+          </li>
+        ))}
+      </ol>
+      <p>
+        Does the original problem still occur?{" "}
+        <strong>{attempt.problemOccurs}</strong>
+        {attempt.finalComment ? ` — ${attempt.finalComment}` : ""}
+      </p>
+    </div>
+  );
+}
 
 type Props = { params: Promise<{ id: string; bugId: string }> };
 const noteTone: Record<
@@ -122,7 +154,19 @@ export default async function BugDetailPage({ params }: Props) {
       id: s.id,
       item: s,
     })),
+    ...bug.verificationAttempts.map((a) => ({
+      kind: "verification" as const,
+      at: a.createdAt,
+      id: a.id,
+      item: a,
+    })),
   ].sort((a, b) => a.at.getTime() - b.at.getTime() || a.id.localeCompare(b.id));
+  const lastFix = [...bug.statusChanges]
+    .reverse()
+    .find((change) => change.toStatus === "Fixed");
+  const canVerify = can(actor.role, "verify", {
+    isFixAuthor: lastFix?.actorId === actor.id,
+  });
   const completeness = evaluate(bug);
   return (
     <main className="mx-auto max-w-6xl space-y-6">
@@ -257,6 +301,40 @@ export default async function BugDetailPage({ params }: Props) {
           <BugForm projectId={projectId} areas={areas} initial={bug} />
         </details>
       )}
+      {(bug.status === "Fixed" ||
+        bug.status === "Verified" ||
+        bug.verificationAttempts.length > 0) && (
+        <section className="card">
+          <h2 className="section-title">Verification</h2>
+          {bug.status === "Fixed" && canVerify && (
+            <VerificationChecklist
+              projectId={projectId}
+              bugId={bugId}
+              steps={bug.steps}
+            />
+          )}
+          {bug.verificationAttempts[0] && (
+            <>
+              <h3 className="mt-5 font-semibold">Latest attempt</h3>
+              <AttemptSummary attempt={bug.verificationAttempts[0]} />
+              {bug.verificationAttempts.length > 1 && (
+                <details className="mt-4">
+                  <summary className="cursor-pointer font-semibold">
+                    Earlier attempts ({bug.verificationAttempts.length - 1})
+                  </summary>
+                  {bug.verificationAttempts.slice(1).map((attempt) => (
+                    <AttemptSummary key={attempt.id} attempt={attempt} />
+                  ))}
+                </details>
+              )}
+            </>
+          )}
+          {bug.status === "Verified" &&
+            bug.verificationAttempts.length === 0 && (
+              <p className="mt-3">No checklist recorded</p>
+            )}
+        </section>
+      )}
       <BugActions
         projectId={projectId}
         bugId={bugId}
@@ -285,6 +363,12 @@ export default async function BugDetailPage({ params }: Props) {
                     <strong>{entry.item.actor.name}</strong> moved{" "}
                     {entry.item.fromStatus} → {entry.item.toStatus}
                     {entry.item.comment ? `: ${entry.item.comment}` : ""}
+                  </p>
+                ) : entry.kind === "verification" ? (
+                  <p className="mt-2 flex items-center gap-2">
+                    <Icon name="check" className="h-4 w-4 text-violet-600" />
+                    <strong>{entry.item.verifier.name}</strong> ·{" "}
+                    {summarizeAttempt(entry.item)}
                   </p>
                 ) : entry.kind === "edit" ? (
                   <>

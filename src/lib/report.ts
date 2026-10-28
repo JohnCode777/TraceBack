@@ -2,6 +2,7 @@ import { join } from "node:path";
 import PDFDocument from "pdfkit";
 import { evaluate, type CompletenessInput } from "./completeness";
 import { isEditLog } from "./edit-log";
+import { summarizeAttempt } from "./verification";
 
 export type ReportData = CompletenessInput & {
   bugId: string;
@@ -27,6 +28,19 @@ export type ReportData = CompletenessInput & {
     comment?: string | null;
     createdAt: Date;
   }[];
+  verificationAttempts?: {
+    verifierName: string;
+    createdAt: Date;
+    outcome: string;
+    problemOccurs: string;
+    finalComment?: string | null;
+    steps: {
+      position: number;
+      instruction: string;
+      result: string;
+      comment?: string | null;
+    }[];
+  }[];
 };
 
 const when = (date?: Date | null) =>
@@ -44,6 +58,22 @@ export function investigationNotes(notes: ReportData["notes"]) {
     notes.filter((note) => !isEditLog(note.body)),
     (note) => note.type,
   );
+}
+
+export function verificationReportLines(
+  attempts: NonNullable<ReportData["verificationAttempts"]>,
+) {
+  if (!attempts.length) return ["No checklist recorded"];
+  return attempts.flatMap((attempt) => [
+    summarizeAttempt(attempt),
+    `Verifier: ${attempt.verifierName}`,
+    `Time: ${when(attempt.createdAt)}`,
+    ...attempt.steps.map(
+      (step) =>
+        `Step ${step.position}: ${step.instruction} — ${step.result}${step.comment ? `; ${step.comment}` : ""}`,
+    ),
+    `Does the original problem still occur? ${attempt.problemOccurs}${attempt.finalComment ? ` — ${attempt.finalComment}` : ""}`,
+  ]);
 }
 
 export async function generateReport(report: ReportData): Promise<Buffer> {
@@ -229,6 +259,8 @@ export async function generateReport(report: ReportData): Promise<Buffer> {
       ? when(report.verifiedAt ?? verification?.createdAt)
       : null,
   );
+  for (const text of verificationReportLines(report.verificationAttempts ?? []))
+    doc.text(text, { features: noLigatures }).moveDown(0.25);
 
   const range = doc.bufferedPageRange();
   for (let page = range.start; page < range.start + range.count; page++) {

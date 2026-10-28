@@ -55,7 +55,7 @@ async function main() {
   for (const bug of buildSeedBugs()) {
     const { steps, notes, statusChanges, ...fields } = bug;
     const completeness = evaluate({ ...fields, steps });
-    await prisma.bug.upsert({
+    const saved = await prisma.bug.upsert({
       where: {
         projectId_number: {
           projectId: fields.projectId,
@@ -75,6 +75,46 @@ async function main() {
         statusChanges: { create: statusChanges },
       },
     });
+    if ([4, 12, 15].includes(fields.number)) {
+      for (const [index, change] of statusChanges.entries()) {
+        if (
+          change.fromStatus !== "Fixed" ||
+          !["Verified", "Investigating"].includes(change.toStatus)
+        )
+          continue;
+        const reopened = change.toStatus === "Investigating";
+        const id = `${saved.id}-verification-${index}`;
+        if (await prisma.verificationAttempt.findUnique({ where: { id } }))
+          continue;
+        await prisma.verificationAttempt.create({
+          data: {
+            id,
+            bugId: saved.id,
+            verifierId: change.actorId,
+            createdAt: change.createdAt,
+            outcome: reopened ? "reopened" : "verified",
+            problemOccurs: reopened ? "Yes" : "No",
+            finalComment: reopened
+              ? "The original failure still occurs."
+              : null,
+            steps: {
+              create: steps.map((step) => ({
+                position: step.position,
+                instruction: step.instruction,
+                result:
+                  reopened && step.position === steps[steps.length - 1].position
+                    ? "Fail"
+                    : "Pass",
+                comment:
+                  reopened && step.position === steps[steps.length - 1].position
+                    ? "Observed the original failure."
+                    : null,
+              })),
+            },
+          },
+        });
+      }
+    }
   }
   for (const project of seedProjects) {
     await prisma.project.updateMany({
